@@ -1,4 +1,4 @@
-# Hercules Agentic Architecture
+# Herakles Gitbub Issues - Agentic Architecture
 
 **A human-supervised contribution framework.** Every PR goes through 10 phases, 28+ automated gates, and 5-7 independent code review agents before I approve it from my inbox.
 
