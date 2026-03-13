@@ -4,7 +4,7 @@ Everything I've submitted, where it stands, and what I learned.
 
 ## The Numbers
 
-**5 PRs submitted. 0 merged. 0 rejected.** All still in review as of March 13, 2026. The framework is a week old — I'll update this as things move.
+**6 PRs submitted. 0 merged. 0 rejected.** All in review as of March 14, 2026. The framework is a week old — I'll update this as things move.
 
 ## Open PRs
 
@@ -24,15 +24,13 @@ The inspector wasn't handling `tools/list_changed`, `resources/list_changed`, or
 **[#1134 — Fix task polling blocking Run button](https://github.com/modelcontextprotocol/inspector/pull/1134)** (Mar 9)
 The task polling mechanism was synchronous and blocked the Run button UI. Changed to non-blocking `pollTaskInBackground`. Pipeline v1.
 
+**[#1144 — Add missing runtime dependencies for strict package managers](https://github.com/modelcontextprotocol/inspector/pull/1144)** (Mar 14)
+Five phantom dependencies missing from root `package.json` that break pnpm and yarn PnP installations. Traced every import in every bundled file. First PR to go through the full V2 pipeline with voice review — 3 rounds of PR description refinement to avoid sounding like AI slop. Supply chain agent found 2 real CVEs; devil's advocate kept the scope tight. Pipeline v2.
+
 ### Kubeflow
 
 **[docs-agent #118 — CORS wildcard to env-var allowlist](https://github.com/kubeflow/docs-agent/pull/118)** (Mar 7)
 Fixed a wildcard CORS configuration (`*`) that allowed any origin. Replaced with an environment-variable-driven allowlist. This was the PR that taught me static checks aren't enough — three agents found the missing `ALLOWED_ORIGINS` env var in deployment.yaml and a wildcard bypass vulnerability that 12 bash checks missed. Led to building the V2 agent verification phase. Pipeline v2.
-
-## Pending
-
-**Inspector #873 — Phantom runtime dependencies** (Mar 13)
-Five dependencies missing from root `package.json` that break pnpm installations. Traced every import in every bundled file. 6 verification agents ran — supply chain specialist found 2 real CVEs (confirmed across 5 databases), devil's advocate argued to keep scope tight. Decided: ship scoped fix, note CVEs in PR description, follow up with version bump PR. Currently awaiting my email approval. Pipeline v2.
 
 ## What I've Learned So Far
 
@@ -46,13 +44,16 @@ Five dependencies missing from root `package.json` that break pnpm installations
 
 **AI agents hallucinate CVE details.** The supply chain agent said the fix version for express-rate-limit was `^8.3.1`. Four independent verification agents confirmed the CVE was real but the minimum fix was actually `^8.2.2`. Always verify. Never trust a single source.
 
+**Your PR description is part of the contribution.** The first draft of the #1144 description scored 5/10 on voice authenticity — too many tables, preemptive FAQs, security-theater language ("trust boundaries"). Three rounds of voice review got it to 7-8/10. A 5-line diff doesn't need 40 lines of description. Match the weight of the words to the weight of the change.
+
 ## Pipeline Evolution
 
 | Version | What Changed | Why |
 |---------|-------------|-----|
 | **v1** (Mar 7) | 8 pre-flight + 10 pre-submit checks | Starting point. Static analysis only. |
 | **v2** (Mar 13) | 12 pre-submit + 5-7 verification agents + email approval | V1's static checks missed real issues on the Kubeflow PR. Added agents that actually reason about code. Added email gate because agents aren't perfect either. |
+| **v2.1** (Mar 14) | Voice reviewer agent (Agent 6) | PR #1144's first draft scored 5/10 on authenticity. Added an agent that specifically checks if the PR description reads like a human wrote it. |
 
 ---
 
-*Updated: 2026-03-13*
+*Updated: 2026-03-14*
