@@ -2,107 +2,100 @@
 
 > AI contributions should be **more** rigorous, not less.
 
-A human-supervised, 10-phase orchestrated pipeline for open source contributions. While the OSS community rightly pushes back on low-effort AI-generated PRs, this framework proves that agentic tooling can produce contributions that exceed the rigor of purely manual ones — when the human stays in the loop and the system does the work humans skip.
+## The Problem
 
-## What This Is
+Open source has a spam problem. AI tools made it trivially easy to generate a "fix" and fire off a PR — so people do, constantly, without reading the contributing guide, without checking if someone's already working on it, without understanding the codebase. Maintainers are drowning in low-effort PRs that waste their time.
 
-A pipeline-first contribution engine that enforces strict sequential gates: no phase proceeds unless all prerequisites pass. The system orchestrates 8 pre-flight gates, 12 pre-submission checks, 8 compliance detections, and 5-7 parallel verification agents around a human engineer who makes every final call.
+The backlash is understandable. Some projects now ban AI-assisted contributions entirely.
 
-The human selects issues, evaluates approaches, reviews all outputs, and approves every submission via email gate. The system handles what humans skip under time pressure: convention detection, secrets scanning, import tracing, CVE analysis, and adversarial review.
+I think that's the wrong response. The problem isn't AI tooling — it's that people use it to skip the hard parts. Reading the contributing guide is boring. Checking for competing PRs is tedious. Documenting your approach and alternatives takes effort. Scanning your diff for accidentally committed secrets is easy to forget.
 
-## Why It Exists
+So I built a system that makes it impossible to skip those parts.
 
-The open source community has a problem: a flood of low-effort, AI-generated PRs that waste maintainer time. The backlash is understandable — many projects now ban or suspect AI-assisted contributions.
+## What This Actually Is
 
-This project takes the opposite approach: **use AI tooling to be more rigorous, not less**. Every PR goes through more gates, more checks, and more review than any manual contribution would. The thesis: an engineer with a well-designed agentic pipeline should produce contributions that are objectively better than those without one.
+It's a pipeline. A strict, sequential, gate-enforced pipeline that takes a GitHub issue and walks it through 10 phases before anything gets pushed. The system won't let me submit a PR unless I've:
 
-## The 10-Phase Orchestrated Pipeline
+- Verified nobody else is working on it (8 pre-flight checks)
+- Read the project's contributing guide and detected its conventions automatically (4-tier comprehension + 8 compliance detections)
+- Passed 12 static checks on my diff (secrets, trailers, DCO, AI disclosure policy)
+- Had 5-7 AI agents independently review the code for correctness, security, convention compliance, integration risk, and — my favorite — an agent whose entire job is to find reasons a maintainer would reject it
+- Received the full diff in my email and explicitly approved it
+
+If any gate fails, the pipeline stops. No exceptions, no overrides. Fix the issue and re-run.
+
+## How It Started vs. How It's Going
+
+**V1** (March 7, 2026): 8 pre-flight gates + 10 pre-submit checks. Simple bash scripts. No agent review, no email gate. Submitted 4 PRs this way.
+
+**V2** (March 13, 2026): Added 12 pre-submit checks, 5-7 parallel verification agents with problem-solving frameworks, and an email approval gate. Built this after a PR review caught issues that the static checks missed — a missing environment variable in a deployment config and a CORS wildcard bypass. Those were the kind of bugs that need someone actually thinking about the code, not just regex-matching for secrets. So I added agents that think.
+
+**Current stats**: 5 PRs submitted, 0 merged (yet), 0 rejected. All still in review. The framework is a week old. I'll update this when the numbers change.
+
+## The Pipeline
 
 ```
-validate (8 gates) -> comprehend (4 tiers) -> comply (8 detections)
-  -> scaffold (artifacts) -> [HUMAN: implement] -> pre-submit (12 checks)
-  -> verify (5-7 agents) -> approve (email gate) -> submit -> monitor
+validate -> comprehend -> comply -> scaffold -> [implement] ->
+pre-submit -> verify -> approve -> submit -> monitor
 ```
 
-| Phase | Name | Gate Type | What Happens |
-|-------|------|-----------|-------------|
-| 1 | **Validate** | Auto | 8-gate pre-flight: issue state, assignments, competing PRs, claims, labels, contributing guide, freshness, comprehension data |
-| 2 | **Comprehend** | Auto | 4-tier knowledge gathering: inline read, quick scan, deep clone, semantic RAG import |
-| 3 | **Comply** | Auto | 8-detection compliance matrix: AI disclosure, DCO, trailers, coverage, commit format, forbidden patterns, CLA, PR template |
-| 4 | **Scaffold** | Human pause | Create per-issue artifacts: spec.md, session.md, decisions.md, tasks.json, pr-checklist.md, pipeline.json |
-| 5 | **Implement** | Human | Fork, branch, implement. Minimal, focused changes. Follow project conventions exactly. |
-| 6 | **Pre-Submit** | Auto | 12-check static gate: forbidden patterns, trailers, DCO, secrets, sensitive files, test evidence, acceptance criteria, session record, alternatives, AI disclosure, checklist, pipeline state |
-| 7 | **Verify** | Agent review | 5-7 parallel agents: correctness, security, domain specialist, conventions, devil's advocate, integration. Problem-solving frameworks embedded in each prompt. |
-| 8 | **Approve** | Human (email) | Full diff + verification findings sent to human via SMTP. Must reply to proceed. |
-| 9 | **Submit** | Human | Comment claim on issue, push branch, create PR with methodology sign-off |
-| 10 | **Monitor** | Continuous | Track review comments, respond within 24h, iterate on feedback |
+**Phases 1-3** run automatically: check if the issue is claimable, gather project context at the right depth, detect the project's conventions.
 
-Each phase writes state to `pipeline.json` (version 2). Orchestrator enforces: no phase N+1 unless phase N = passed.
+**Phase 4** pauses. I review the issue spec, choose an approach, document alternatives.
 
-## V11 Agent Verification (Phase 7)
+**Phase 5** is me writing code.
 
-After 12 static checks pass, 5-7 specialist agents review the actual code in parallel:
+**Phase 6** runs 12 static checks on the diff. Catches the obvious stuff — secrets, missing trailers, DCO sign-off, AI disclosure policy violations.
 
-| Agent | Role | Lens |
-|-------|------|------|
-| **Correctness** | Does the fix solve the issue? | Polya's Method, Bayesian evaluation, Five Whys |
-| **Security** | Does the fix introduce vulnerabilities? | STRIDE threat model, attack surface analysis |
-| **Domain Specialist** | Adaptive: supply chain, auth, API, data | Selected based on what the diff touches |
-| **Conventions** | Does the fix follow project conventions? | Pareto principle, 30-second maintainer scan |
-| **Devil's Advocate** | Why would a maintainer REJECT this? | Dialectical thinking, pre-mortem, Six Hats |
-| **Integration** | Does the fix break anything in the ecosystem? | Systems thinking, Theory of Constraints |
+**Phase 7** is where it gets interesting. The pipeline assembles a briefing document with the issue spec, compliance rules, full diff, and changed file contents. Then it spawns 5-7 specialist agents that review the code simultaneously:
 
-Each agent produces a binary PASS/FAIL verdict with file:line citations. Overall: PASS only if ALL agents pass. Any FAIL blocks the pipeline.
+- **Correctness** — Does this actually fix the issue? Did I miss edge cases?
+- **Security** — Did I introduce a vulnerability? OWASP Top 10 relevance?
+- **Domain specialist** — Picked based on what the diff touches. Dependency changes get a supply chain expert. Auth changes get an auth specialist. CORS changes get an API security expert.
+- **Conventions** — Would a maintainer reject this on style alone? Does it match the project's patterns?
+- **Devil's advocate** — What's the strongest argument for rejecting this PR? What are the maintainer's unstated preferences?
+- **Integration** — Does this break anything downstream? Version conflicts? Package manager compatibility?
 
-## 28 Automated Gates
+Every agent gives a PASS or FAIL with specific file:line citations. If any agent fails, the pipeline blocks.
 
-| Category | Count | Script |
-|----------|-------|--------|
-| Pre-flight validation | 8 gates | `validate.sh` |
-| Compliance detection | 8 fields | `compliance.sh` |
-| Pre-submission checks | 12 checks | `pre-submit.sh` |
-| Agent verification | 5-7 agents | `orchestrate.sh` (phase 7) |
+**Phase 8** sends the complete diff and all agent findings to my email. I read every line. I reply "approved" or I don't.
 
-## Tiered Comprehension
+**Phase 9**: push and submit the PR.
 
-| Tier | Name | Time | When | Output |
-|------|------|------|------|--------|
-| 0 | Inline | Seconds | Issue names exact files | Read files directly |
-| 1 | Quick Scan | ~30s | First time contributing to a repo | scan-summary.md (CONTRIBUTING.md, CI, CLA, conventions) |
-| 2 | Deep Dive | ~2min | Bug spans multiple files, unfamiliar subsystem | Source tree, test patterns, dependency map, import traces |
-| 3 | Atheneum | ~5min | 3+ contributions to same repo | Docs + code imported into pgvector RAG for semantic search |
+**Phase 10**: monitor reviews, respond within 24 hours.
 
-## Human-in-the-Loop
+See [ARCHITECTURE.md](ARCHITECTURE.md) for the full technical walkthrough.
 
-**D. Michael Piscitelli** ([herakles-dev](https://github.com/herakles-dev)) supervises every phase. Three explicit pause points enforce human oversight:
+## A Real Example
 
-1. **Scaffold pause** (Phase 4) — Human reviews issue spec and chooses implementation approach
-2. **Verify pause** (Phase 7) — Human reviews agent findings before proceeding to approval
-3. **Approve gate** (Phase 8) — Human receives full diff + findings via email, must explicitly approve
+Here's what this looks like in practice. [MCP Inspector #873](https://github.com/modelcontextprotocol/inspector/issues/873) — phantom dependencies that break pnpm installations.
 
-See [HUMAN-IN-THE-LOOP.md](HUMAN-IN-THE-LOOP.md) for full details.
+The pipeline validated the issue (open since October 2025, zero comments, nobody working on it). Comprehension pulled the project's conventions. I traced every import in the bundled files to find exactly 5 missing dependencies. The pre-submit gate passed all 12 checks.
 
-## Stack
+Then the verification agents ran. The **correctness reviewer** confirmed all 5 dependencies by tracing imports line-by-line. The **conventions reviewer** caught something I missed — the prettier hook had silently bumped a devDependency version during my commit. Fixed it. The **supply chain specialist** flagged two real CVEs in the dependencies I was adding (express-rate-limit IPv6 bypass, serve-handler minimatch ReDoS). The **devil's advocate** said: keep the scope tight, don't try to fix CVEs in the same PR — it's scope creep for a first-time contributor.
 
-- **Claude Code** (Anthropic) — Orchestration, agent coordination, code review
-- **V11 Protocol** — Spec-driven development with Agent Teams and formation patterns
-- **Problem-Solving Protocol** — 23 frameworks (Cynefin, STRIDE, Polya, Dialectical, Systems Thinking) embedded in agent prompts
-- **gh CLI** — GitHub operations (fork, branch, PR, issue management, advisory lookup)
-- **IONOS SMTP** — Email approval gate (human must approve every submission)
-- **Project CI suites** — Per-project testing (never skip the project's own checks)
+I wasn't sure about the CVE decision, so I spawned 4 more agents to independently verify the CVEs were real and not hallucinated. They confirmed across 5 sources (GitHub Advisory DB, npm audit, NVD, Snyk, GitLab Advisory). Real CVEs. But pre-existing in the workspace packages — my PR doesn't introduce them.
 
-## Results
+Final decision: ship the scoped fix, note the CVEs in the PR description, submit a separate version bump PR later. Two clean contributions instead of one messy one.
 
-See [CONTRIBUTIONS.md](CONTRIBUTIONS.md) for a live tracker of PRs submitted and merged.
+That's the kind of decision-making this framework is designed to support. Not replace — support.
+
+## Who I Am
+
+**D. Michael Piscitelli** ([herakles-dev](https://github.com/herakles-dev)). I select the issues, choose the approaches, review every line of code, approve every submission, and respond to every review comment. The system proposes. I dispose.
+
+More on the human oversight model: [HUMAN-IN-THE-LOOP.md](HUMAN-IN-THE-LOOP.md)
 
 ## Documentation
 
-| Document | What's In It |
-|----------|-------------|
-| [ARCHITECTURE.md](ARCHITECTURE.md) | 10-phase pipeline details, verification formation, pipeline state format |
-| [METHODOLOGY.md](METHODOLOGY.md) | All 28 gates: 8 validation, 8 compliance, 12 pre-submit. Claiming protocol. |
-| [HUMAN-IN-THE-LOOP.md](HUMAN-IN-THE-LOOP.md) | 3 pause points, what the human decides/reviews/acts on |
-| [CONTRIBUTIONS.md](CONTRIBUTIONS.md) | Live PR tracker with status |
+- [ARCHITECTURE.md](ARCHITECTURE.md) — Full pipeline walkthrough, phase by phase
+- [METHODOLOGY.md](METHODOLOGY.md) — Every gate and check, with the "why" behind each one
+- [HUMAN-IN-THE-LOOP.md](HUMAN-IN-THE-LOOP.md) — What I decide, what the system decides, and where the line is
+- [CONTRIBUTIONS.md](CONTRIBUTIONS.md) — Live PR tracker
+
+## Stack
+
+Claude Code, bash scripts, `gh` CLI, IONOS SMTP for the email gate, and a pgvector RAG system for deep codebase comprehension. The verification agents use problem-solving frameworks adapted from Cynefin, STRIDE, Polya, and dialectical reasoning — not because it sounds impressive, but because telling an agent "check for security issues" produces vague results, while telling it "apply STRIDE threat modeling to this diff" produces specific, actionable findings.
 
 ---
 

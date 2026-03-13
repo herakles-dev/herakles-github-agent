@@ -1,107 +1,67 @@
 # Human-in-the-Loop
 
-## The Human
+## Let Me Be Direct
 
-**D. Michael Piscitelli** ([herakles-dev](https://github.com/herakles-dev)) supervises every phase of the contribution pipeline. This is not an autonomous AI bot submitting PRs. It's an engineer using a pipeline-first agentic toolchain with enforced oversight at every critical decision point.
+I'm D. Michael Piscitelli ([herakles-dev](https://github.com/herakles-dev)). I built this system, and I make every decision that matters. This is not a bot. There is no "submit PRs while I sleep" mode. The pipeline literally cannot push code without my explicit email approval.
 
-## Three Enforced Pause Points
+I'm writing this page because AI-assisted open source contributions have a trust problem, and I think being transparent about exactly where the human is in the loop is how you earn that trust back.
 
-The orchestrator pipeline (`orchestrate.sh`) enforces three hard stops where the system halts and waits for human action:
+## Where The Pipeline Forces Me To Stop
 
-### Pause 1: Scaffold (Phase 4)
+The orchestrator has three hard stops. Not "the human can optionally review" — the script exits and nothing happens until I act.
 
-The system has validated the issue, gathered comprehension data, and generated a compliance matrix. It scaffolds the issue artifacts (spec, session record, decisions log) and **stops**.
+### Stop 1: Before I Start Coding
 
-**The human decides:**
-- Is this issue worth pursuing? (scoring suggests yes, but context matters)
-- Which implementation approach? (alternatives are documented)
-- Is the comprehension tier sufficient? (escalate if needed)
+The system has checked the issue, gathered context, detected the project's rules, and scaffolded the artifacts. Now it stops and waits for me.
 
-The pipeline resumes only when the human begins implementation.
+This is where I decide: Is this issue actually worth pursuing? The scoring system said yes, but scoring can't capture everything — maybe the maintainer has been hostile to similar PRs, maybe the project is mid-rewrite and this code is getting deleted next week, maybe the issue is technically valid but politically charged.
 
-### Pause 2: Verify (Phase 7)
+I choose the approach here. I document what alternatives I considered and why I rejected them. Then I write the code.
 
-After implementation and 12 static checks pass, the system assembles a briefing and **stops**. 5-7 specialist agents review the code. The human sees all agent findings.
+### Stop 2: After The Agents Review
 
-**The human decides:**
-- Are the agent findings accurate? (agents can have false positives/negatives)
-- Should any FAIL verdicts be overridden? (domain knowledge the agents lack)
-- Is additional work needed before approval?
+The code is written. 12 static checks passed. 5-7 agents reviewed the code and produced their verdicts. Now the pipeline stops again.
 
-### Pause 3: Approve (Phase 8)
+This is where I evaluate the agent findings. Are they right? Agents are useful but not infallible. They can produce false positives ("this introduces a vulnerability" when it doesn't) and false negatives (missing something obvious). On the Inspector PR, the supply chain agent said the fix version for a CVE was 8.3.1 — I sent 4 independent agents to verify and the actual minimum fix was 8.2.2. The agent was close but wrong on the specific version.
 
-The full diff, verification findings, compliance status, and pipeline state are sent to the human's email via IONOS SMTP. The pipeline **stops and waits for an explicit approval reply**.
+I also resolve disagreements here. On that same PR, the supply chain specialist said "bump the versions to fix CVEs" and the devil's advocate said "don't touch files you weren't asked to change." Both had valid points. I decided: keep the scope tight, note the CVEs in the PR description, submit a separate version bump later. Two contributions instead of one messy one.
 
-**The human reviews:**
-- The complete diff (every line of code)
-- All agent verification findings
-- The PR description and methodology sign-off
-- Compliance output accuracy
+### Stop 3: Before Anything Gets Pushed
 
-Nothing is pushed or submitted until the human replies "approved."
+The full diff, every agent finding, and the compliance summary arrive in my email. I read every line of code. I read every agent verdict. I reply "approved" — and only then does anything get pushed to GitHub.
 
-## What the Human Decides
+This exists because I don't trust the process to be perfect. I trust it to catch most things. But my name is on the PR, and I want to know exactly what I'm submitting.
 
-- **Which issues to pursue** — The scoring system ranks issues, but the human selects based on context the automation can't capture: maintainer sentiment, project direction, strategic value, ecosystem dynamics.
-- **Which approach to take** — The human evaluates potential solutions, considers trade-offs, and selects the implementation strategy. Alternatives are documented in the session record.
-- **When comprehension is sufficient** — The tiered system suggests a level, but the human decides when they understand the codebase well enough.
-- **Whether the implementation is correct** — Every line of code is reviewed by the human before committing.
-- **Scope decisions** — When agents disagree (e.g., supply chain specialist says "bump CVE versions" but devil's advocate says "keep scope tight"), the human resolves the tension.
+## What I Decide
 
-## What the Human Reviews
+**Which issues to work on.** The scoring system ranks them, but I pick based on strategic value, personal interest, and gut feeling about whether the maintainer will be receptive.
 
-- **Every diff before submission** — The pre-submit gate automates 12 checks, but the human reads the actual diff.
-- **Every PR description** — The methodology sign-off is a template, but the human verifies accuracy and edits for the specific contribution.
-- **Every compliance output** — The compliance matrix is auto-generated, but the human verifies it matches reality.
-- **Every agent finding** — The 5-7 verification agents produce structured verdicts, but the human evaluates whether they're correct.
+**How to fix them.** I consider multiple approaches, document the alternatives, and choose one. Sometimes the agents suggest a different approach during verification — I evaluate that and decide.
 
-## What the Human Acts On
+**Scope.** This is the hardest one. The supply chain agent on Inspector #873 found real CVEs. Should I fix them in the same PR? Expand the scope? The devil's advocate argued no. I agreed — but it was my call, informed by the agents' analysis.
 
-- **Claims issues personally** — Comments on issues are written or approved by the human.
-- **Responds to review feedback** — All PR review interactions are human-to-human conversations.
-- **Makes judgment calls** — When automation says CAUTION, the human evaluates whether to proceed.
-- **Resolves agent disagreements** — When the devil's advocate and the security reviewer disagree on scope, the human decides.
-- **Accepts maintainer decisions** — Rejections are accepted gracefully. No arguing with maintainers.
+**Whether agent findings are correct.** I override when I have domain knowledge they lack. I investigate when I'm not sure. I don't blindly trust PASS or blindly act on FAIL.
 
-## What the Automation Handles
+## What The System Handles
 
-The system does the work that humans skip under time pressure:
+The system does the work I'd skip if I were in a hurry:
 
-- **Pre-flight validation** — 8 automated gates before investing any time on an issue. Catches competing PRs, stale claims, and blocking labels.
-- **Convention detection** — Auto-reads CONTRIBUTING.md, CLAUDE.md, pyproject.toml to build a compliance matrix. Catches trailer requirements, DCO sign-off needs, coverage thresholds.
-- **Secrets scanning** — Regex scan of every diff for AWS keys, API tokens, private keys, hardcoded passwords.
-- **Import tracing** — Traces actual import statements in source files to verify dependency declarations are complete and correct.
-- **CVE verification** — Cross-references dependencies against GitHub Advisory Database, npm audit, NVD, and Snyk to verify vulnerabilities are real (not hallucinated).
-- **Adversarial review** — The devil's advocate agent specifically looks for reasons a maintainer would reject the PR: scope creep, unstated preferences, style mismatches.
-- **Session tracking** — Maintains a methodology record for every issue, creating the audit trail that proves rigor.
-- **AI disclosure compliance** — Automatically enforces per-repo AI disclosure policies. If a project forbids AI mentions, the system blocks PRs that contain them.
+**Checking for competing PRs.** I'd probably glance at the issue and start coding. The system searches for open PRs, cross-references, comment claims, and assignees. It saved me from wasting time on already-claimed issues more than once.
 
-## Why This Matters
+**Detecting project conventions.** I'd probably skim CONTRIBUTING.md. The system parses it programmatically and catches things I'd miss — like specific trailer requirements or the fact that a project has a 100% coverage requirement.
 
-The open source community is right to push back on low-effort AI-generated PRs. The solution isn't to abandon AI tooling — it's to use it to be **more rigorous**.
+**Scanning for secrets.** I'd like to think I'd never accidentally commit a key. But people do, all the time, and the regex patterns catch the common ones before they hit GitHub.
 
-A human without this toolchain might:
-- Miss a competing PR and waste time on a claimed issue
-- Forget to add required trailers to commits
-- Accidentally include a secret in a diff
-- Submit without reading CONTRIBUTING.md thoroughly
-- Skip documenting their approach and alternatives
-- Miss a CVE in a dependency they're adding
-- Not consider why a maintainer might reject the PR
+**Tracing imports.** On the phantom dependencies PR, the system traced every `import` in every bundled file to verify exactly which packages were missing. I could have done that manually — it would have taken 20 minutes and I might have missed one.
 
-With this pipeline, those failures are caught automatically. The human's judgment is augmented, not replaced. Every contribution goes through more checks than any purely manual workflow would include.
+**Verifying CVEs are real.** AI agents sometimes hallucinate vulnerability IDs. The system cross-references against GitHub Advisory Database, npm audit, NVD, and Snyk. On the Inspector PR, it confirmed 5 CVEs across 5 independent sources. That's not something I'd do manually for every PR.
 
-## The Standard
+**Adversarial review.** I don't naturally think "why would a maintainer reject this?" The devil's advocate agent does, every time. It caught the prettier version bump I didn't notice. It flagged scope creep risk on the CVE fix. It's the most valuable agent in the formation.
 
-Every PR submitted through this architecture:
+## What This Is Not
 
-1. **Pre-validated** — 8-gate check confirms the issue is claimable and worth pursuing
-2. **Comprehension-backed** — Project docs and code read at the appropriate depth (Tier 0-3)
-3. **Compliance-checked** — 8 per-repo conventions auto-detected and enforced
-4. **Security-scanned** — 12 static checks for secrets, sensitive files, and policy violations
-5. **Agent-verified** — 5-7 specialist agents review correctness, security, conventions, integration, and adversarially challenge the PR
-6. **Methodology-documented** — Full audit trail from issue discovery to PR submission
-7. **Alternatives-considered** — Not just the first approach that works
-8. **Email-approved** — Human explicitly approves the full diff before any code is pushed
+This is not a system that generates PRs and hopes they stick. It's not a spray-and-pray approach. It's not autonomous.
 
-This is what AI-assisted open source contributions should look like.
+It's a toolchain that makes the tedious parts of rigorous contribution automatic, so I can focus on the parts that require actual judgment: understanding the problem, choosing the right fix, and making good decisions about scope and approach.
+
+The open source community is right to be skeptical of AI-assisted contributions. The way to earn that trust is not to hide the AI — it's to show that the human is making the decisions and the AI is doing the verification work that most contributors skip entirely.

@@ -1,206 +1,132 @@
 # Methodology
 
-## Gate Summary
+The technical reference for every gate and check. If you want the narrative version, see [ARCHITECTURE.md](ARCHITECTURE.md).
 
-The pipeline enforces 28+ automated gates across 4 categories:
+## Don't Waste Anyone's Time
 
-| Category | Count | Script | When |
-|----------|-------|--------|------|
-| Pre-flight validation | 8 gates | `validate.sh` | Before any work begins |
-| Compliance detection | 8 fields | `compliance.sh` | After comprehension |
-| Pre-submission checks | 12 checks | `pre-submit.sh` | After implementation |
-| Agent verification | 5-7 agents | `orchestrate.sh` | After pre-submit passes |
+Before writing a single line of code, the system checks 8 things to make sure I'm not about to waste my time — or a maintainer's.
 
-## Pre-Flight Validation (8 Gates)
+### Pre-Flight Validation
 
-Run before investing any time on an issue. Prevents wasted effort on claimed, blocked, or stale issues.
+| Gate | Question | What Happens If It Fails |
+|------|----------|--------------------------|
+| Issue state | Is it still open? | BLOCKED. Don't work on closed issues. |
+| Assignments | Is someone assigned? | BLOCKED. Respect official assignments. |
+| Competing PRs | Is someone already working on it? | BLOCKED. Don't submit competing PRs. |
+| Comment claims | Did someone claim it recently? | BLOCKED for 14 days. After that, it's fair game. |
+| Labels | Does it have blocking labels? | BLOCKED. `wontfix`, `stale`, `duplicate` = walk away. |
+| Contributing guide | Does one exist? | Warning. Proceed carefully if not. |
+| Freshness | Is it ancient? | Warning if > 1 year. Might be stale for a reason. |
+| Comprehension data | Have I scanned this repo before? | Advisory. Faster if I have prior data. |
 
-| Gate | What It Checks | Blocks If |
-|------|---------------|-----------|
-| 1. Issue state | Is it still OPEN? | Closed or merged |
-| 2. Assignments | Is someone officially assigned? | Has assignee |
-| 3. Competing PRs | Any open PRs referencing this issue? | Active competing PR |
-| 4. Comment claims | Did someone say "I'll take this"? | Claimed < 14 days ago |
-| 5. Label signals | `needs confirmation`, `wontfix`, `stale`, `invalid`, `duplicate`? | Blocking labels present |
-| 6. Contributing guide | Does CONTRIBUTING.md exist? CLA required? | Advisory only |
-| 7. Freshness | How old is the issue? | > 365 days (advisory) |
-| 8. Comprehension data | Scan summary and compliance matrix exist? | Advisory only |
+### Playing Fair With Other Contributors
 
-Verdicts: **CLEAR** (proceed), **CAUTION** (warnings exist), **BLOCKED** (stop).
+This matters more than most people think. Nothing kills your credibility faster than submitting a PR for an issue someone else is actively working on.
 
-### Competing PR Protocol
+**If someone's PR is open and active**: I move on. Period.
 
-| Situation | Action |
-|-----------|--------|
-| Active PR, author engaged | Do NOT submit competing PR. Move on. |
-| PR open < 14 days, no review | Wait. Don't compete. |
-| PR stale 14-30 days, author silent | Comment: "Is this still active? Happy to help." |
-| PR stale 30+ days, no author response | Comment offering to take over. If no reply in 3 days, submit your own PR referencing the stale one. |
-| No PR, someone commented "I'll take this" | Treat as claimed for 14 days |
-| No PR, no comments, no assignee | CLEAR — claim it |
+**If someone claimed it in comments but hasn't submitted after 14 days**: I check in. "Is this still active? Happy to help." If no response after another 3 days, I'll submit my own PR and reference the stale claim.
 
-### Claiming Protocol
+**If nobody's touched it**: I comment first. "I'd like to take this. [Brief approach]. Will have a PR up shortly." Then I have 7 days to deliver or I unclaim.
 
-1. Always comment before coding: "I'd like to take this. [Brief approach]. Will have a PR up shortly."
-2. Deliver within 7 days or unclaim
-3. One claim at a time per repo
+**One claim at a time per repo.** I don't grab 5 issues and sit on them.
 
-## Compliance Detection (8 Fields)
+## Know The Project's Rules
 
-Auto-generated from comprehension data. No API calls — reads local scan data and pattern-matches.
+Every project has conventions that aren't immediately obvious. The compliance detection runs after comprehension and builds a matrix of 8 rules:
 
-| # | Detection | Sources | Example Output |
-|---|-----------|---------|----------------|
-| 1 | AI disclosure policy | CLAUDE.md, CONTRIBUTING.md | `policy: forbidden` (MCP python-sdk) |
-| 2 | DCO requirement | CONTRIBUTING.md ("Signed-off-by") | `dco_required: true` (Kubeflow) |
-| 3 | Required trailers | CLAUDE.md, CONTRIBUTING.md | `trailers_required: Github-Issue, Reported-by` |
-| 4 | Coverage threshold | pyproject.toml `fail_under`, package.json `coverageThreshold` | `coverage_requirement: 100%` |
-| 5 | Commit format | CONTRIBUTING.md convention detection | `commit_format: conventional-commits` |
-| 6 | Forbidden patterns | Auto-generated from AI disclosure policy | `forbidden_in_commits: co-authored-by, Claude, GPT` |
-| 7 | CLA requirement | CONTRIBUTING.md ("CLA", "Contributor License Agreement") | `cla_required: true` |
-| 8 | PR template | `.github/pull_request_template.md` exists? | `pr_template_exists: true` |
+| What | Why It Matters | Example |
+|------|---------------|---------|
+| AI disclosure policy | Some projects ban AI tool mentions entirely | MCP python-sdk: `forbidden` — no co-authored-by, no "generated by" |
+| DCO sign-off | Some projects require it on every commit | Kubeflow: `required` — forget `--signoff` and your PR is dead |
+| Trailers | Some projects need specific commit trailers | MCP python-sdk: `Github-Issue:#N` and `Reported-by:username` |
+| Coverage | Some projects require specific test coverage | MCP python-sdk: `100%` — miss one branch and CI fails |
+| Commit format | Conventional commits? Angular? Free-form? | Varies by project |
+| Forbidden patterns | Auto-generated from the AI policy | If forbidden: `co-authored-by, Claude, GPT, generated by, assisted by` |
+| CLA | Need to sign a contributor agreement? | Some Anthropic repos require this |
+| PR template | Does the project have one? | MCP Inspector has a detailed template with transport-specific testing checklist |
 
-Output: `data/comprehension/OWNER-REPO/compliance.md` — used by pre-submit.sh and orchestrate.sh.
+This matrix drives the pre-submit checks. Miss a trailer? The gate catches it. Include an AI mention where it's forbidden? Caught. Forget DCO? Caught.
 
-## Pre-Submission Gate (12 Checks)
+## Don't Ship Garbage
 
-Run after implementation, before agent verification. Fast static checks that catch obvious issues.
+After I've written the code, 12 static checks run before anything else sees it.
 
-### Prerequisites (Check 0)
-| # | Check | Blocker? |
-|---|-------|----------|
-| 0 | Comprehension + compliance data exist | BLOCKER |
+**Things that will stop me cold:**
+- A secret in my diff (AWS keys, API tokens, private keys, hardcoded passwords)
+- A sensitive file (.env, .key, credentials.json)
+- An AI mention where the project forbids them
+- A missing required trailer or DCO sign-off
 
-### Commits (Checks 1-3)
-| # | Check | Blocker? |
-|---|-------|----------|
-| 1 | Forbidden patterns in commits (AI mentions when project forbids) | BLOCKER |
-| 2 | Required trailers present in latest commit | BLOCKER |
-| 3 | DCO sign-off present when required | BLOCKER |
+**Things that'll make me go back and fix stuff:**
+- Template placeholders still in my session record (means I didn't document my testing)
+- Unchecked items on the PR checklist
+- No alternatives documented (means I didn't consider other approaches)
+- Acceptance criteria not defined
 
-### Security (Checks 4-5)
-| # | Check | Blocker? |
-|---|-------|----------|
-| 4 | Secrets in diff (AWS key, API token, private key, password, GitHub PAT, Slack token) | BLOCKER |
-| 5 | Sensitive files in diff (.env, .key, .pem, .p12, .pfx, credentials.*, secrets.*, id_rsa) | BLOCKER |
+These checks take 2 seconds. If they fail, I fix the issue before burning time on agent review.
 
-### Quality (Checks 6-7)
-| # | Check | Blocker? |
-|---|-------|----------|
-| 6 | Test evidence documented (not template placeholders) | Warning |
-| 7 | Issue spec has acceptance criteria | Warning |
+## Get The Code Reviewed (By Agents Who Think)
 
-### Methodology (Checks 8-12)
-| # | Check | Blocker? |
-|---|-------|----------|
-| 8 | Session record exists | Warning |
-| 9 | Alternatives documented | Warning |
-| 10 | AI disclosure compliance (final policy enforcement) | BLOCKER |
-| 11 | PR checklist complete (no unchecked items) | Warning |
-| 12 | Pipeline state consistent (validate/comprehend/comply all passed) | Warning |
+This is the V2 addition. After static checks pass, 5-7 agents review the actual code.
 
-Exit codes: `0` = CLEAR, `1` = BLOCKED (any blocker), `2` = CAUTION (warnings only).
+### Why Not Just Use Static Checks?
 
-## Agent Verification (5-7 Agents)
+Because static checks can't reason. They can tell me "there's no AWS key in your diff" but they can't tell me "you forgot to add an environment variable to the deployment config." That requires understanding what the code does.
 
-After static checks pass, the orchestrator assembles a briefing document and pauses. 5-7 specialist agents review the actual implementation in parallel. Each agent applies domain-specific problem-solving frameworks.
+I learned this the hard way on the Kubeflow CORS PR. All 12 static checks passed. Three agents found two real issues. That's when I built the verification phase.
 
-### Mandatory Agents (5)
+### The Agents
 
-| # | Role | Agent Type | Frameworks |
-|---|------|-----------|-----------|
-| 1 | Correctness Reviewer | code-quality-engineer | Polya's Method, Bayesian evaluation, Five Whys, Inversion, Abstraction Check |
-| 2 | Security Reviewer | secure-coding-advisor | STRIDE threat model, Cynefin classification, Attack Surface Analysis, Inversion |
-| 3 | Conventions Reviewer | code-quality-engineer | Pareto principle, Inversion ("30-second maintainer scan") |
-| 4 | Devil's Advocate | code-quality-engineer | Dialectical thinking, Pre-mortem, Six Thinking Hats (Black Hat), Socratic Method |
-| 5 | Integration Reviewer | code-quality-engineer | Systems Thinking, Theory of Constraints, Second-order effects |
+Each agent gets a briefing document with the issue spec, compliance rules, full diff, and complete contents of every changed file. They run in parallel and don't share context — each one independently evaluates the code through its specific lens.
 
-### Adaptive Agent (Agent 2b)
+**Correctness**: Does this actually fix the issue? The prompt embeds Polya's Method — understand the problem, devise a plan, execute, verify. The agent checks every acceptance criterion against the actual code and cites specific lines.
 
-Selected based on what the diff touches:
+**Security**: Does this introduce vulnerabilities? Uses STRIDE threat modeling applied to the specific diff. Not a generic "is this secure?" — a structured evaluation of each threat category against the changes.
 
-| Diff Domain | Agent Type | Focus |
-|-------------|-----------|-------|
-| Dependencies, packaging | api-security-expert | Supply chain CVEs, typosquatting, version analysis |
-| Auth, OAuth, JWT | auth-specialist | OAuth2 flows, session fixation, privilege escalation |
-| API routes, CORS, headers | api-security-expert | CORS bypass, header injection, origin validation |
-| Data handling, SQL | secure-coding-advisor | Injection, path traversal, deserialization |
+**Domain Specialist**: Changes its specialty based on the diff. Dependency changes get a supply chain expert. Auth changes get an auth specialist. The supply chain expert on the Inspector PR found two real CVEs — then I sent 4 more agents to verify they weren't hallucinated (they weren't).
 
-### Verification Protocol
+**Conventions**: Would a maintainer reject this on style? Does a "30-second maintainer scan" — the first-impression pattern matching that experienced maintainers do. On the Inspector PR, this agent caught a prettier version bump that slipped in through the lint-staged hook.
 
-1. Orchestrator assembles briefing from: spec.md, compliance.md, session.md, full diff, changed file contents, comprehension context
-2. All agents run in parallel as background agents (Sonnet model for efficiency)
-3. Each agent reads the briefing, reads source files, produces structured PASS/FAIL verdict with file:line citations
-4. Orchestrator synthesizes results into `verify-findings.json`
-5. Overall verdict: **PASS only if ALL agents pass**
-6. Results recorded in pipeline.json via `--record-verify`
+**Devil's Advocate**: Argues against merging. Uses dialectical reasoning and pre-mortem analysis. "Imagine this PR was rejected — what's the most likely reason?" Forces me to think about what I'm not seeing.
 
-### Problem-Solving Protocol
+**Integration**: Traces second-order effects. Will this break downstream consumers? Package manager compatibility issues? Version conflicts?
 
-Each agent prompt embeds relevant frameworks from a master protocol of 23 methods:
+All agents must PASS for the pipeline to continue. One FAIL blocks everything.
 
-- **Cynefin Classification** — Categorize the problem domain (Simple/Complicated/Complex/Chaotic)
-- **Polya's Method** — Understand → Plan → Execute → Verify
-- **STRIDE Threat Model** — Spoofing, Tampering, Repudiation, Information Disclosure, Denial of Service, Elevation of Privilege
-- **Dialectical Thinking** — Thesis → Antithesis → Synthesis (devil's advocate)
-- **Systems Thinking** — Feedback loops, emergent properties, second-order effects
-- **Theory of Constraints** — Find and address the bottleneck
-- **Inversion** — "What would make this fail?" Pre-mortem analysis
-- **Bayesian Evaluation** — Update confidence based on evidence, not priors
+### Problem-Solving Frameworks
+
+The agents use specific named frameworks in their prompts because vague prompts produce vague results. "Check for security issues" gets you a generic OWASP checklist. "Apply STRIDE threat modeling to this diff, evaluating each category (Spoofing, Tampering, Repudiation, Information Disclosure, DoS, Elevation of Privilege) against the changed code" gets you specific, actionable findings.
+
+The frameworks come from a master protocol I maintain: Cynefin (classify the problem), Polya (methodical problem-solving), STRIDE (security), dialectical reasoning (adversarial thinking), systems thinking (second-order effects), Theory of Constraints (find the bottleneck), inversion (what would make this fail?), Bayesian evaluation (update beliefs based on evidence).
 
 ## Session Records
 
-Every issue gets a methodology record (`session.md`) that tracks:
-- Validation results and date
-- Comprehension tier used and key files read
-- Selected approach and rationale
-- Alternatives considered with rejection reasons
-- Implementation details (branch, files changed, tests)
-- Test output evidence
-- Pre-submission gate results
-- Verification agent findings
-- PR URL and submission date
-- Review feedback log
+Every issue gets a methodology record that tracks the full journey: what I validated, what comprehension tier I used, what approach I chose and why, what alternatives I rejected and why, what tests I ran, what the pre-submit gate said, what the agents found, and what happened with the PR.
 
-This creates a complete audit trail from issue discovery to merged PR.
+It's an audit trail. If someone asks "how did you arrive at this fix?" — the session record answers that question completely.
 
-## V11 Session Integration
+## Scoring Issues
 
-Each issue becomes a mini V11 session with 6 tracked tasks:
+Not all issues are equal. I use a 6-factor weighted score:
 
-```
-T1: Comprehension   -> Read issue, understand code area, run comprehend.sh
-T2: Implement        -> Fork, branch, implement fix
-T3: Test             -> Run project CI, add coverage
-T4: Pre-Submit       -> 12-check compliance gate + 5-7 agent verification
-T5: PR Submit        -> Claim issue, create PR with methodology sign-off
-T6: Monitor          -> Respond to review feedback < 24h
-```
+- **Repo stars** (15%) — visibility signal
+- **Issue reactions** (15%) — community demand
+- **Label quality** (15%) — `good first issue` is a maintainer invitation
+- **Solvability** (20%) — can I actually fix this well?
+- **Credibility value** (20%) — will this PR demonstrate competence?
+- **Freshness** (15%) — recent issues are more likely to be relevant
 
-The `solve.sh` script scaffolds the entire session structure. The `orchestrate.sh` script runs phases 1-4 automatically, pauses for human implementation, then runs phases 6-8 with gates.
+Anything above 55 is worth pursuing. Above 75 is priority. Above 90 is don't-let-someone-else-grab-it.
 
 ## Target Organizations
 
-Prioritized by ecosystem relevance and credibility value:
+I focus where the credibility matters most:
 
-| Tier | Organizations | Why |
-|------|--------------|-----|
-| **S** | anthropics, modelcontextprotocol | Claude/MCP ecosystem — highest credibility |
-| **A** | NVIDIA, vercel, vllm-project | GPU/AI infrastructure, high visibility |
-| **B** | huggingface, langchain-ai, run-llama | ML/LLM tooling |
-| **C** | Trending repos | Opportunistic high-visibility contributions |
+**S-Tier** (Claude/MCP ecosystem): anthropics, modelcontextprotocol — this is my domain, contributions here carry the most weight.
 
-## Issue Scoring
+**A-Tier** (high-visibility infrastructure): NVIDIA, Vercel, vLLM — huge repos, massive visibility.
 
-6-factor weighted scoring (0-100 scale):
+**B-Tier** (ML/AI tooling): Hugging Face, LangChain, LlamaIndex — the tools people actually use.
 
-| Factor | Weight | Signal |
-|--------|--------|--------|
-| Repo Stars | 15% | Visibility multiplier |
-| Issue Reactions | 15% | Community demand |
-| Label Quality | 15% | Maintainer invitation (`good first issue` = 90, `help wanted` = 85) |
-| Solvability | 20% | Clear steps, small scope, familiar stack |
-| Credibility Value | 20% | S-tier org, non-trivial code change, tests included |
-| Freshness | 15% | Recent issues score higher |
-
-Thresholds: pursue >= 55, priority >= 75, must-do >= 90.
+**C-Tier** (opportunistic): trending repos with high-reaction issues and no competition.

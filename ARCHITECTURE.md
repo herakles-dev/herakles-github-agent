@@ -1,239 +1,184 @@
 # Architecture
 
-## Overview
+This is the full technical walkthrough of the 10-phase pipeline. If you just want the overview, see the [README](README.md).
 
-The Hercules Agentic Architecture is a 10-phase orchestrated pipeline that transforms a GitHub issue into a submitted PR. A single orchestrator script (`orchestrate.sh`) enforces strict sequential gates — no phase proceeds unless all prerequisites pass. State persists in `pipeline.json` (version 2) so sessions can be interrupted and resumed.
+## The Shape of a Contribution
 
-## Pipeline Flow
-
-```
-validate ──> comprehend ──> comply ──> scaffold ──> [HUMAN: implement]
-   (auto)       (auto)       (auto)   (pause)         (manual)
-
-──> pre-submit ──> verify ──> approve ──> submit ──> monitor
-      (auto)      (agents)   (email)    (manual)   (continuous)
-```
-
-Three explicit human pause points: scaffold (exit 2), verify (exit 2), approve (exit 2).
-
-## Phase Details
-
-### Phase 1: Validate (8 Gates)
-
-Pre-flight check before committing any time to an issue.
-
-| Gate | What It Checks | Blocks If |
-|------|---------------|-----------|
-| 1. Issue state | Is it still OPEN? | Closed or merged |
-| 2. Assignments | Is someone officially assigned? | Has assignee |
-| 3. Competing PRs | Any open PRs referencing this issue? | Active competing PR |
-| 4. Comment claims | Did someone say "I'll take this"? | Claimed < 14 days ago |
-| 5. Label signals | `needs confirmation`, `wontfix`, `stale`? | Blocking labels present |
-| 6. Contributing guide | Does CONTRIBUTING.md exist? CLA required? | Advisory only |
-| 7. Freshness | How old is the issue? | > 365 days (advisory) |
-| 8. Comprehension data | Scan summary and compliance matrix exist? | Advisory only |
-
-Exit codes: `0` = CLEAR, `1` = BLOCKED, `2` = CAUTION.
-
-### Phase 2: Comprehend (4 Tiers)
-
-Tiered knowledge gathering — use the minimum depth needed, escalate only when context is insufficient.
-
-| Tier | Name | Time | What It Does | Output |
-|------|------|------|-------------|--------|
-| 0 | Inline | Seconds | Read issue-referenced files directly | Embedded in context |
-| 1 | Quick Scan | ~30s | Fetch 20 key project files without cloning | scan-summary.md, CONTRIBUTING.md, CI config, PR template |
-| 2 | Deep Dive | ~2min | Clone repo, map sources, trace imports, detect tests | source-tree.txt, test-files.txt, dependencies.txt, issue-traces.txt |
-| 3 | Atheneum | ~5min | Import docs + code into pgvector RAG system | Semantic search via API (port 8131) and MCP server |
-
-Auto-escalation triggers:
-- Issue body mentions 1 specific file → stay at Tier 0
-- Issue body is vague ("X doesn't work") → Tier 1 minimum
-- Fix requires understanding 3+ files → Tier 2
-- 3+ contributions planned to same repo → consider Tier 3
-
-### Phase 3: Comply (8 Detections)
-
-Auto-generates a per-repo compliance matrix from comprehension data. No API calls — reads local scan data and pattern-matches.
-
-| Detection | Output Field | What It Finds |
-|-----------|-------------|---------------|
-| AI disclosure policy | `policy: forbidden\|allowed\|required` | Scans CLAUDE.md + CONTRIBUTING.md for forbidden AI language |
-| DCO requirement | `dco_required: true\|false` | Detects "DCO", "sign-off", "Signed-off-by" |
-| Required trailers | `trailers_required: list\|none` | Extracts `Trailer-Name:` patterns |
-| Coverage threshold | `coverage_requirement: %\|none` | Parses `fail_under` from pyproject.toml, `coverageThreshold` from package.json |
-| Commit format | `commit_format: conventional\|angular\|free-form` | Pattern detection in contributing guide |
-| Forbidden patterns | `forbidden_in_commits: list` | Auto-generated from AI disclosure policy |
-| CLA requirement | `cla_required: true\|false` | Detects "CLA", "Contributor License Agreement" |
-| PR template | `pr_template_exists: true\|false` | Checks `.github/pull_request_template.md` |
-
-### Phase 4: Scaffold (Human Pause)
-
-Creates per-issue artifact directory. Pipeline pauses (exit 2) for human to review spec and choose approach.
+Every issue goes through the same pipeline. No shortcuts.
 
 ```
-data/issues/OWNER-REPO-NUMBER/
-├── spec.md           # Issue spec with acceptance criteria
-├── session.md        # Methodology record (filled during implementation)
-├── decisions.md      # Approach selection + alternatives
-├── tasks.json        # V11 task definitions (6 tasks: T1-T6)
-├── pr-checklist.md   # Pre-submission checklist (auto-filled from compliance.md)
-└── pipeline.json     # Pipeline state (10 phases, version 2)
+validate -> comprehend -> comply -> scaffold -> [implement] ->
+pre-submit -> verify -> approve -> submit -> monitor
 ```
 
-### Phase 5: Implement (Human)
+The pipeline is a state machine. Each phase writes its result to `pipeline.json`. The orchestrator won't run phase N+1 unless phase N has passed. If you interrupt a session and come back later, it picks up where you left off.
 
-Human implements the fix: fork, branch, commit. The system detects commits in the fork directory to mark this phase complete.
+Three phases pause and wait for me: **scaffold** (choose the approach), **verify** (review agent findings), and **approve** (read the diff in my email and say yes). Everything else runs automatically.
 
-Rules:
-- Minimal, focused changes (one issue = one PR)
-- Follow project coding standards exactly
-- Run project CI suite locally
-- No scope creep
+## Phase 1: Validate
 
-### Phase 6: Pre-Submit (12 Static Checks)
+Before I spend any time on an issue, the system checks 8 things:
 
-Fast static gate after implementation, before agent verification. Catches obvious issues.
+1. **Is it still open?** — Issues get closed. Check first.
+2. **Is anyone assigned?** — Respect official assignments.
+3. **Are there competing PRs?** — Search for open PRs that reference this issue. If someone's working on it, move on.
+4. **Has anyone claimed it in comments?** — "I'll take this" counts as a claim for 14 days.
+5. **Are there blocking labels?** — `wontfix`, `stale`, `needs confirmation`, `duplicate` — these mean don't bother.
+6. **Does a contributing guide exist?** — If yes, I'll need to read it. If not, proceed with caution.
+7. **How old is it?** — Issues older than a year might be stale for a reason.
+8. **Do I have comprehension data for this repo?** — If I've scanned this repo before, that data speeds things up.
 
-| # | Category | Check | Blocks If |
-|---|----------|-------|-----------|
-| 0 | Prereqs | Comprehension + compliance data exist | Missing scan-summary.md or compliance.md |
-| 1 | Commits | Forbidden patterns in commits | AI mention when project forbids |
-| 2 | Commits | Required trailers present | Missing required trailer |
-| 3 | Commits | DCO sign-off present | DCO required but missing |
-| 4 | Security | Secrets in diff | AWS key, API token, private key, password pattern |
-| 5 | Security | Sensitive files in diff | .env, .key, .pem, credentials.* |
-| 6 | Quality | Test evidence documented | Template placeholders in session.md |
-| 7 | Quality | Acceptance criteria defined | Missing from spec.md |
-| 8 | Methodology | Session record exists | No session.md |
-| 9 | Methodology | Alternatives documented | No alternatives in session/spec |
-| 10 | Methodology | AI disclosure compliance | Policy mismatch |
-| 11 | Methodology | PR checklist complete | Unchecked items |
-| 12 | Methodology | Pipeline state consistent | validate/comprehend/comply not all passed |
+The output is simple: CLEAR, CAUTION, or BLOCKED. I don't start issues that come back BLOCKED.
 
-Exit codes: `0` = CLEAR, `1` = BLOCKED (checks 0-5, 10), `2` = CAUTION (warnings only).
+## Phase 2: Comprehend
 
-### Phase 7: Verify (5-7 Agent Review)
+Not every issue needs the same depth of understanding. A typo fix doesn't need a full codebase analysis. A multi-file bug does. The system has 4 tiers:
 
-After static checks pass, the orchestrator pauses and assembles a briefing document containing the issue spec, compliance matrix, session record, full diff, changed file contents, and comprehension context. Then 5-7 specialist agents review the actual code in parallel.
+**Tier 0 — Just read the files.** The issue says "line 42 of server.py has a typo." Read server.py. Done. Seconds.
 
-#### Verification Formation
+**Tier 1 — Quick scan.** First time contributing to a repo. The system fetches CONTRIBUTING.md, README, CI config, PR template, package.json/pyproject.toml — about 20 key files — without cloning. Produces a summary: here's how they want commits formatted, here's whether they need DCO sign-off, here's their CI pipeline. Takes ~30 seconds.
 
-| Agent | Type | Lens | Problem-Solving Frameworks |
-|-------|------|------|---------------------------|
-| **1. Correctness** | code-quality-engineer | Does fix solve the issue? | Polya's Method, Bayesian evaluation, Five Whys, Inversion |
-| **2. Security** | secure-coding-advisor | Does fix introduce vulnerabilities? | STRIDE threat model, Cynefin classification, attack surface analysis |
-| **2b. Domain Specialist** | Adaptive (see below) | Domain-specific risk | Selected based on diff content |
-| **3. Conventions** | code-quality-engineer | Follows project conventions? | Pareto principle, Inversion ("30-second maintainer scan") |
-| **4. Devil's Advocate** | code-quality-engineer | Why would maintainer REJECT? | Dialectical thinking, pre-mortem, Six Hats Black Hat, Socratic method |
-| **5. Integration** | code-quality-engineer | Breaks anything in ecosystem? | Systems thinking, Theory of Constraints, second-order effects |
+**Tier 2 — Deep dive.** The bug spans multiple files or I don't understand the subsystem. Clone the repo. Map the source tree. Trace import chains from the files mentioned in the issue. Find test patterns. ~2 minutes.
 
-#### Domain Specialist Selection (Agent 2b)
+**Tier 3 — Semantic search.** I'm planning 3+ contributions to the same repo and need to understand its architecture. Import the docs and key source files into a pgvector-backed RAG system. Now I can ask natural language questions across the whole codebase. ~5 minutes upfront, but it pays off across multiple issues.
 
-| Diff Touches | Agent Type | Focus |
-|-------------|-----------|-------|
-| Dependencies, packaging, npm audit | api-security-expert | Supply chain, CVE verification, typosquatting |
-| Auth, OAuth, JWT, sessions | auth-specialist | OAuth2 flows, session fixation, privilege escalation |
-| API routes, CORS, headers | api-security-expert | CORS bypass, header injection, origin validation |
-| Data handling, SQL, deserialization | secure-coding-advisor | Injection, path traversal, deserialization |
+The rule: use the minimum tier that gives you enough context. Don't over-research.
 
-#### Verification Output
+## Phase 3: Comply
 
-Each agent produces a structured finding:
+Every open source project has its own rules. Some require DCO sign-off. Some require specific commit trailers. Some forbid any mention of AI tools. Some demand 100% test coverage. Some have CLAs.
 
-```json
-{
-  "verdict": "PASS|FAIL",
-  "timestamp": "ISO-8601",
-  "reviewers": [
-    {
-      "role": "correctness|security|supply-chain|conventions|devils-advocate|integration",
-      "verdict": "PASS|FAIL",
-      "summary": "One paragraph assessment",
-      "findings": [
-        { "file": "path", "line": 42, "status": "PASS|FAIL", "detail": "description" }
-      ]
-    }
-  ],
-  "summary": "Overall synthesis"
-}
-```
+The compliance script reads the comprehension data and auto-detects 8 things:
+- AI disclosure policy (forbidden / allowed / required)
+- DCO requirement
+- Required commit trailers
+- Coverage thresholds
+- Commit format (conventional commits, angular, free-form)
+- Forbidden patterns
+- CLA requirement
+- PR template existence
 
-Overall verdict: **PASS only if ALL agents pass.** Any FAIL blocks the pipeline.
+This becomes a `compliance.md` file that the rest of the pipeline reads. No manual configuration — it's all detected from the project's own docs.
 
-### Phase 8: Approve (Email Gate)
+**Why this matters:** The MCP python-sdk forbids any mention of AI tools in commits or PRs. If I accidentally include a `Co-Authored-By: Claude` trailer, the pre-submit gate catches it. Kubeflow requires DCO sign-off on every commit — if I forget `--signoff`, the gate catches that too. These are the kind of mistakes that get your PR immediately closed.
 
-Full diff, verification findings, compliance status, and pipeline state are sent to the human via IONOS SMTP. The human must reply to approve. This is the final gate before any code is pushed or PR is created.
+## Phase 4: Scaffold
 
-Email contents:
-- Pipeline status (all phase results)
-- Compliance matrix summary
-- Verification findings (all agent verdicts)
-- Full git diff
-- Action required: reply "approved"
+The system creates a directory for this issue with everything I'll need: an issue spec with acceptance criteria, a session record to fill in as I work, a decisions log for approach selection, a task breakdown, and a pre-submission checklist auto-populated from the compliance matrix.
 
-### Phase 9: Submit
+Then it **stops**. This is where I decide if the issue is actually worth doing, choose my approach, and document what alternatives I considered. The pipeline doesn't resume until I start writing code.
 
-After human approval:
-1. Comment to claim the issue (if not already claimed)
-2. Push branch to fork
-3. Create PR using project's PR template
-4. Include methodology sign-off (when AI disclosure is allowed)
+## Phase 5: Implement
 
-### Phase 10: Monitor
+I write the code. Fork, branch, implement, commit. The system checks for new commits in the fork directory to know when I'm done.
 
-Continuous tracking of PR review comments. Respond to feedback within 24 hours. Iterate on changes if requested. Accept maintainer decisions gracefully.
+The rules I hold myself to:
+- One issue = one PR. No scope creep.
+- Follow the project's conventions exactly, even if I'd do it differently.
+- Run the project's test suite locally.
+- Keep changes minimal and focused.
 
-## Pipeline State (pipeline.json v2)
+## Phase 6: Pre-Submit
+
+12 automated checks before anything goes near the verification agents:
+
+**The blockers** (if any of these fail, full stop):
+- No forbidden patterns in commits (AI mentions when the project forbids them)
+- Required trailers present
+- DCO sign-off present when required
+- No secrets in the diff (AWS keys, API tokens, private keys, passwords — the regex patterns catch the common ones)
+- No sensitive files (.env, .key, .pem, credentials.*)
+- AI disclosure policy compliance
+
+**The warnings** (proceed with caution):
+- Test evidence is documented, not just template placeholders
+- Acceptance criteria are defined
+- Session record exists
+- Alternatives are documented
+- PR checklist is complete
+- Pipeline state is consistent
+
+I built this gate because it's fast (~2 seconds) and catches the stuff that's embarrassing to miss. The agent review in Phase 7 is slower and more thorough, but there's no point running 6 agents if I left an AWS key in my diff.
+
+## Phase 7: Verify
+
+This is the heart of the V2 pipeline. After 12 static checks pass, the system assembles a briefing document — issue spec, compliance rules, session record, full diff, complete contents of every changed file, and comprehension context — and spawns 5-7 specialist agents to review the code simultaneously.
+
+### The Agents
+
+**Correctness Reviewer** — Does this fix actually solve the issue? The prompt tells it to work through the problem using Polya's Method (Understand → Plan → Execute → Verify) and check every acceptance criterion against the code. It cites specific file:line references.
+
+**Security Reviewer** — Does this fix introduce vulnerabilities? The prompt includes STRIDE threat modeling (Spoofing, Tampering, Repudiation, Information Disclosure, DoS, Elevation of Privilege) applied to the specific diff. Not "check for security issues" — that produces generic output. "Apply STRIDE to this diff" produces specific findings.
+
+**Domain Specialist** — This one adapts. The system looks at what the diff touches and picks the right specialist. Dependency changes get a supply chain expert who verifies CVEs against real databases (not hallucinated ones). Auth changes get an auth specialist. CORS changes get an API security expert. This agent exists because a dependency PR needs different expertise than an auth PR.
+
+**Conventions Reviewer** — Would a maintainer reject this on style alone? The prompt tells it to do a "30-second maintainer scan" — the kind of quick pattern-matching that experienced maintainers do when they open a PR. Wrong commit format? Scope creep? Formatting inconsistency? This agent catches it.
+
+**Devil's Advocate** — My favorite. Its entire job is to argue against merging the PR. It uses dialectical reasoning (thesis → antithesis → synthesis) and pre-mortem analysis ("imagine this PR was rejected — why?"). It looks for unstated maintainer preferences, scope creep, architectural concerns. If it can't find a good reason to reject, the PR is probably solid.
+
+**Integration Reviewer** — Does this break anything in the broader ecosystem? Package manager compatibility? Version conflicts? CI pipeline impacts? It uses systems thinking to trace second-order effects.
+
+Each agent gives a binary PASS/FAIL with citations. If ANY agent fails, the pipeline stops. I fix the issue and re-run.
+
+### Why This Exists
+
+I added the agent review after the docs-agent CORS PR. The 12 static checks found nothing wrong with that diff. But when I ran 3 agents manually, they caught two real issues: a missing `ALLOWED_ORIGINS` environment variable in the deployment config and a wildcard CORS bypass. Static analysis can't catch those. You need something that actually reasons about the code.
+
+## Phase 8: Approve
+
+The full diff, all agent findings, and the compliance summary are emailed to me. I read every line. I reply "approved" — or I don't, and nothing gets pushed.
+
+This gate exists because the agents are good but not perfect. They can hallucinate (one claimed a CVE existed at a specific version — I spawned 4 more agents to cross-verify and it turned out the fix version was wrong). The email forces me to slow down and actually read what I'm about to put my name on.
+
+## Phase 9: Submit
+
+After I approve: comment on the issue to claim it, push the branch, create the PR using the project's template. Include the methodology sign-off if the project allows AI disclosure.
+
+## Phase 10: Monitor
+
+Watch for review comments. Respond within 24 hours. If the maintainer asks for changes, make them and re-run the pre-submit + verify cycle. If they reject it, accept the decision gracefully and learn from it.
+
+## The State Machine
+
+Everything persists in `pipeline.json` (version 2). Here's a real one from the Inspector phantom dependencies fix:
 
 ```json
 {
   "version": 2,
   "issue": "modelcontextprotocol/inspector#873",
-  "slug": "modelcontextprotocol-inspector-873",
-  "created": "2026-03-13T05:30:04Z",
   "current_phase": "approve",
   "phases": {
-    "validate": { "status": "passed", "result": "CLEAR", "timestamp": "..." },
-    "comprehend": { "status": "passed", "result": "reused-tier1", "timestamp": "..." },
-    "comply": { "status": "passed", "result": "generated", "timestamp": "..." },
-    "scaffold": { "status": "passed", "result": "created", "timestamp": "..." },
-    "implement": { "status": "passed", "result": "3 commits", "timestamp": "..." },
-    "pre-submit": { "status": "passed", "result": "CLEAR", "timestamp": "..." },
-    "verify": { "status": "passed", "result": "PASS", "timestamp": "...",
-      "findings": { "verdict": "PASS", "reviewers": [...] }
-    },
-    "approve": { "status": "waiting", "result": null, "timestamp": "..." },
-    "submit": { "status": "pending", "result": null, "timestamp": null },
-    "monitor": { "status": "pending", "result": null, "timestamp": null }
+    "validate":   { "status": "passed", "result": "CLEAR" },
+    "comprehend": { "status": "passed", "result": "reused-tier1" },
+    "comply":     { "status": "passed", "result": "generated" },
+    "scaffold":   { "status": "passed", "result": "created" },
+    "implement":  { "status": "passed", "result": "3 commits" },
+    "pre-submit": { "status": "passed", "result": "CLEAR" },
+    "verify":     { "status": "passed", "result": "PASS", "findings": {...} },
+    "approve":    { "status": "waiting" },
+    "submit":     { "status": "pending" },
+    "monitor":    { "status": "pending" }
   }
 }
 ```
 
+Interrupt the session, come back a week later, run `--resume` — it picks up exactly where it left off.
+
 ## Infrastructure
 
-```
-scripts/
-├── orchestrate.sh   # Master pipeline (10 phases, state machine, agent verification)
-├── validate.sh      # 8-gate pre-flight validation
-├── comprehend.sh    # 4-tier comprehension framework
-├── compliance.sh    # 8-detection compliance matrix generation
-├── solve.sh         # V11 session scaffolding per issue
-├── pre-submit.sh    # 12-check pre-submission gate
-├── notify.sh        # IONOS SMTP email (approval gate + notifications)
-├── hunt.sh          # Issue discovery across target orgs
-├── score.sh         # Weighted issue scoring (6 factors)
-├── analyze-repo.sh  # Deep repo analysis
-├── track.sh         # Contribution tracking & stats
-└── gsoc.sh          # Google Summer of Code 2026 module
-```
+12 bash scripts, each doing one thing:
 
-## Key Principles
-
-1. **Pipeline-first** — Single orchestrator enforces gate sequence with state persistence
-2. **Quality over quantity** — One excellent PR beats ten mediocre ones
-3. **Minimum viable comprehension** — Use the right tier, don't over-research
-4. **Claim before coding** — Always comment on the issue first
-5. **Atomic contributions** — One issue = one branch = one PR
-6. **Respect the project** — Follow their conventions, not yours
-7. **Adversarial verification** — The devil's advocate agent exists to find reasons to REJECT
+| Script | Job |
+|--------|-----|
+| `orchestrate.sh` | The master pipeline. 10 phases, state machine, agent coordination. |
+| `validate.sh` | 8-gate pre-flight. Is this issue worth pursuing? |
+| `comprehend.sh` | 4-tier comprehension. How deeply do I need to understand this repo? |
+| `compliance.sh` | 8-detection compliance matrix. What are this project's rules? |
+| `solve.sh` | Session scaffolding. Create the issue directory and artifacts. |
+| `pre-submit.sh` | 12-check static gate. Did I make any obvious mistakes? |
+| `notify.sh` | IONOS SMTP email. The approval gate + notifications. |
+| `hunt.sh` | Issue discovery across target orgs. |
+| `score.sh` | Weighted scoring. Which issues are worth the most? |
+| `analyze-repo.sh` | Deep repo analysis. |
+| `track.sh` | Contribution stats. |
+| `gsoc.sh` | Google Summer of Code module. |

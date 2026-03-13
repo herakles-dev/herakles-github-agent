@@ -1,47 +1,57 @@
 # Contributions
 
-Live tracker of PRs submitted using the Hercules Agentic Architecture.
+Everything I've submitted, where it stands, and what I learned.
+
+## The Numbers
+
+**5 PRs submitted. 0 merged. 0 rejected.** All still in review as of March 13, 2026. The framework is a week old — I'll update this as things move.
 
 ## Open PRs
 
-| Date | Repo | PR | Issue | Description | Pipeline |
-|------|------|----|-------|-------------|----------|
-| 2026-03-07 | modelcontextprotocol/python-sdk | [#2241](https://github.com/modelcontextprotocol/python-sdk/pull/2241) | [#2236](https://github.com/modelcontextprotocol/python-sdk/issues/2236) | pywin32 soft imports for Windows process management | v1 (8+10 gates) |
-| 2026-03-07 | modelcontextprotocol/python-sdk | [#2242](https://github.com/modelcontextprotocol/python-sdk/pull/2242) | [#2233](https://github.com/modelcontextprotocol/python-sdk/issues/2233) | ClosedResourceError in _handle_message | v1 (8+10 gates) |
-| 2026-03-07 | modelcontextprotocol/inspector | [#1132](https://github.com/modelcontextprotocol/inspector/pull/1132) | [#1131](https://github.com/modelcontextprotocol/inspector/issues/1131) | Handle tools/resources/prompts list_changed notifications | v1 (8+10 gates) |
-| 2026-03-09 | modelcontextprotocol/inspector | [#1134](https://github.com/modelcontextprotocol/inspector/pull/1134) | [#1077](https://github.com/modelcontextprotocol/inspector/issues/1077) | Fix task polling blocking the Run button | v1 (8+10 gates) |
-| 2026-03-07 | kubeflow/docs-agent | [#118](https://github.com/kubeflow/docs-agent/pull/118) | [#76](https://github.com/kubeflow/docs-agent/issues/76) | CORS wildcard -> env-var allowlist | v2 (8+12+agents) |
+### MCP Python SDK
 
-## Pending Submission
+**[#2241 — pywin32 soft imports](https://github.com/modelcontextprotocol/python-sdk/pull/2241)** (Mar 7)
+Five-line fix for Windows process management. The SDK hard-imported `pywin32`, which isn't available on all platforms. Changed to soft imports with graceful fallbacks. Pipeline v1.
 
-| Date | Repo | Issue | Description | Pipeline | Status |
-|------|------|-------|-------------|----------|--------|
-| 2026-03-13 | modelcontextprotocol/inspector | [#873](https://github.com/modelcontextprotocol/inspector/issues/873) | Add 5 phantom runtime dependencies for strict package managers | v2 (8+12+6 agents) | Awaiting human approval |
+**[#2242 — ClosedResourceError in _handle_message](https://github.com/modelcontextprotocol/python-sdk/pull/2242)** (Mar 7)
+Race condition where the message handler could access a closed resource. Required understanding the async lifecycle. CI was green after fixing a ruff formatting issue. Pipeline v1.
 
-## Merged PRs
+### MCP Inspector
 
-| Date | Repo | PR | Issue |
-|------|------|----|-------|
-| — | — | — | (tracking) |
+**[#1132 — Handle list_changed notifications](https://github.com/modelcontextprotocol/inspector/pull/1132)** (Mar 7)
+The inspector wasn't handling `tools/list_changed`, `resources/list_changed`, or `prompts/list_changed` MCP notifications. Added the handlers. Pipeline v1.
 
-## Pipeline Versions
+**[#1134 — Fix task polling blocking Run button](https://github.com/modelcontextprotocol/inspector/pull/1134)** (Mar 9)
+The task polling mechanism was synchronous and blocked the Run button UI. Changed to non-blocking `pollTaskInBackground`. Pipeline v1.
 
-| Version | Gates | Agent Verification | Email Approval | First Used |
-|---------|-------|--------------------|----------------|------------|
-| **v1** | 8 pre-flight + 10 pre-submit | No | No | 2026-03-07 |
-| **v2** | 8 pre-flight + 12 pre-submit | 5-7 parallel agents with problem-solving frameworks | IONOS SMTP gate | 2026-03-13 |
+### Kubeflow
 
-## Stats
+**[docs-agent #118 — CORS wildcard to env-var allowlist](https://github.com/kubeflow/docs-agent/pull/118)** (Mar 7)
+Fixed a wildcard CORS configuration (`*`) that allowed any origin. Replaced with an environment-variable-driven allowlist. This was the PR that taught me static checks aren't enough — three agents found the missing `ALLOWED_ORIGINS` env var in deployment.yaml and a wildcard bypass vulnerability that 12 bash checks missed. Led to building the V2 agent verification phase. Pipeline v2.
 
-- **Total PRs submitted**: 5
-- **PRs pending submission**: 1 (inspector #873, awaiting approval)
-- **PRs merged**: 0
-- **PRs open**: 5
-- **PRs rejected**: 0
-- **Repos contributed to**: 3 (python-sdk, inspector, docs-agent)
-- **Organizations**: 2 (modelcontextprotocol, kubeflow)
-- **Issues verified with agent formation**: 2 (docs-agent #76, inspector #873)
-- **CVEs independently verified**: 5 (express-rate-limit GHSA-46wh-pxpv-q5gq, minimatch x3, serve-handler transitive)
+## Pending
+
+**Inspector #873 — Phantom runtime dependencies** (Mar 13)
+Five dependencies missing from root `package.json` that break pnpm installations. Traced every import in every bundled file. 6 verification agents ran — supply chain specialist found 2 real CVEs (confirmed across 5 databases), devil's advocate argued to keep scope tight. Decided: ship scoped fix, note CVEs in PR description, follow up with version bump PR. Currently awaiting my email approval. Pipeline v2.
+
+## What I've Learned So Far
+
+**The python-sdk is intensely competitive.** Many issues have multiple people racing to submit fixes. The validate.sh pre-flight check has saved me from wasting time on claimed issues several times.
+
+**The inspector is less contested and more welcoming.** Good first issues actually available. Maintainers are responsive. Node 22.7.5+ requirement means I can't run the full test suite locally (I'm on Node 20), but `npx tsc --noEmit --skipLibCheck` catches type errors.
+
+**Kubeflow uses Prow bot and DCO sign-off.** Miss the `--signoff` flag and your PR is dead on arrival. The compliance matrix catches this automatically now.
+
+**Prettier hooks surprise you.** On the Inspector phantom deps PR, the lint-staged pre-commit hook silently changed a prettier devDependency version during my commit. The conventions reviewer agent caught it. I wouldn't have noticed.
+
+**AI agents hallucinate CVE details.** The supply chain agent said the fix version for express-rate-limit was `^8.3.1`. Four independent verification agents confirmed the CVE was real but the minimum fix was actually `^8.2.2`. Always verify. Never trust a single source.
+
+## Pipeline Evolution
+
+| Version | What Changed | Why |
+|---------|-------------|-----|
+| **v1** (Mar 7) | 8 pre-flight + 10 pre-submit checks | Starting point. Static analysis only. |
+| **v2** (Mar 13) | 12 pre-submit + 5-7 verification agents + email approval | V1's static checks missed real issues on the Kubeflow PR. Added agents that actually reason about code. Added email gate because agents aren't perfect either. |
 
 ---
 
