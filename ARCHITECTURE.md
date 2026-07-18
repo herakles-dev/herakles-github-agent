@@ -102,7 +102,7 @@ I built this gate because it's fast (~2 seconds) and catches the stuff that's em
 
 ## Phase 7: Verify
 
-This is the heart of the V2 pipeline. After 12 static checks pass, the system assembles a briefing document — issue spec, compliance rules, session record, full diff, complete contents of every changed file, and comprehension context — and spawns 5-7 specialist agents to review the code simultaneously.
+This is the heart of the v2.1 pipeline. After 12 static checks pass, the system assembles a briefing document — issue spec, compliance rules, session record, full diff, complete contents of every changed file, and comprehension context — and spawns 6-8 specialist agents to review the code simultaneously.
 
 ### The Agents
 
@@ -118,6 +118,8 @@ This is the heart of the V2 pipeline. After 12 static checks pass, the system as
 
 **Integration Reviewer** — Does this break anything in the broader ecosystem? Package manager compatibility? Version conflicts? CI pipeline impacts? It uses systems thinking to trace second-order effects.
 
+**Voice Reviewer** — added after a PR description came back from a first draft scoring 5/10. It doesn't touch the code at all — it reads the drafted PR description and asks one question: does this read like a human engineer wrote it, or like AI slop? It scores authenticity and flags the tells: needless tables, preemptive FAQs nobody asked, security-theater phrasing, over-explaining things the maintainers already know. A great fix with an AI-sounding writeup still gets you pattern-matched as spam, so this one matters as much as the code reviewers.
+
 Each agent gives a binary PASS/FAIL with citations. If ANY agent fails, the pipeline stops. I fix the issue and re-run.
 
 ### Why This Exists
@@ -128,7 +130,7 @@ I added the agent review after the docs-agent CORS PR. The 12 static checks foun
 
 The full diff, all agent findings, and the compliance summary are emailed to me. I read every line. I reply "approved" — or I don't, and nothing gets pushed.
 
-This gate exists because the agents are good but not perfect. They can hallucinate (one claimed a CVE existed at a specific version — I spawned 4 more agents to cross-verify and it turned out the fix version was wrong). The email forces me to slow down and actually read what I'm about to put my name on.
+This gate exists because the agents are good but not perfect, and a clean pass doesn't mean I get to skip reading the diff myself. Case in point: reviving Inspector PR #1134, all six verify agents passed the fix — but the integration reviewer had done real work to get there, tracing `callTool`'s return value two hops out and catching a regression the other five missed: an app-resource tool run as a task opened its embedded view on a placeholder instead of the final result. I read that finding line by line, wrote a regression test that failed on the pre-fix code to prove it was real, and only then approved. The email forces me to slow down and actually read what I'm about to put my name on.
 
 ## Phase 9: Submit
 
@@ -140,7 +142,7 @@ Watch for review comments. Respond within 24 hours. If the maintainer asks for c
 
 ## The State Machine
 
-Everything persists in `pipeline.json` (version 2). Here's a real one from the Inspector phantom dependencies fix:
+Everything persists in `pipeline.json` (version 2.1). Here's a real one from the Inspector phantom dependencies fix:
 
 ```json
 {

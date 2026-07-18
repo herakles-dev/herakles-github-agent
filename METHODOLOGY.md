@@ -68,7 +68,7 @@ These checks take 2 seconds. If they fail, I fix the issue before burning time o
 
 ## Get The Code Reviewed (By Agents Who Think)
 
-This is the V2 addition. After static checks pass, 5-7 agents review the actual code.
+This is the v2.1 addition. After static checks pass, 6-8 agents review the actual code.
 
 ### Why Not Just Use Static Checks?
 
@@ -84,13 +84,15 @@ Each agent gets a briefing document with the issue spec, compliance rules, full 
 
 **Security**: Does this introduce vulnerabilities? Uses STRIDE threat modeling applied to the specific diff. Not a generic "is this secure?" — a structured evaluation of each threat category against the changes.
 
-**Domain Specialist**: Changes its specialty based on the diff. Dependency changes get a supply chain expert. Auth changes get an auth specialist. The supply chain expert on the Inspector PR found two real CVEs — then I sent 4 more agents to verify they weren't hallucinated (they weren't).
+**Domain Specialist**: Changes its specialty based on the diff. Dependency changes get a supply chain expert who checks advisories and CVE databases directly instead of trusting whatever the model remembers. Auth changes get an auth specialist. CORS changes get an API security expert.
 
 **Conventions**: Would a maintainer reject this on style? Does a "30-second maintainer scan" — the first-impression pattern matching that experienced maintainers do. On the Inspector PR, this agent caught a prettier version bump that slipped in through the lint-staged hook.
 
 **Devil's Advocate**: Argues against merging. Uses dialectical reasoning and pre-mortem analysis. "Imagine this PR was rejected — what's the most likely reason?" Forces me to think about what I'm not seeing.
 
-**Integration**: Traces second-order effects. Will this break downstream consumers? Package manager compatibility issues? Version conflicts?
+**Integration**: Traces second-order effects. Will this break downstream consumers? Package manager compatibility issues? Version conflicts? On the Inspector #1134 revival, this is the agent that actually earned its keep — it followed `callTool`'s return value two hops out and found that running an app-resource tool as a task opened its embedded view against a placeholder instead of the final result. The other five agents passed the fix clean. I added a regression test that fails on the pre-fix code to lock it in.
+
+**Voice**: Reads the drafted PR description and asks one question — does this read like a human wrote it, or like AI slop? Scores authenticity, flags tells: needless tables, preemptive FAQs, security-theater language, over-explaining things the maintainers already know. I added this one after a PR description came back 5/10 on its first draft. A good fix with an AI-sounding writeup still gets you pattern-matched as spam.
 
 All agents must PASS for the pipeline to continue. One FAIL blocks everything.
 
@@ -98,7 +100,7 @@ All agents must PASS for the pipeline to continue. One FAIL blocks everything.
 
 The agents use specific named frameworks in their prompts because vague prompts produce vague results. "Check for security issues" gets you a generic OWASP checklist. "Apply STRIDE threat modeling to this diff, evaluating each category (Spoofing, Tampering, Repudiation, Information Disclosure, DoS, Elevation of Privilege) against the changed code" gets you specific, actionable findings.
 
-The frameworks come from a master protocol I maintain: Cynefin (classify the problem), Polya (methodical problem-solving), STRIDE (security), dialectical reasoning (adversarial thinking), systems thinking (second-order effects), Theory of Constraints (find the bottleneck), inversion (what would make this fail?), Bayesian evaluation (update beliefs based on evidence).
+The frameworks come from a master protocol I maintain: Polya for methodical problem-solving, STRIDE for security, dialectical reasoning for adversarial thinking, systems thinking for second-order effects.
 
 ## Session Records
 

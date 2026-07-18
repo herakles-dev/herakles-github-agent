@@ -20,11 +20,11 @@ I choose the approach here. I document what alternatives I considered and why I 
 
 ### Stop 2: After The Agents Review
 
-The code is written. 12 static checks passed. 5-7 agents reviewed the code and produced their verdicts. Now the pipeline stops again.
+The code is written. 12 static checks passed. 6-8 agents reviewed the code and produced their verdicts. Now the pipeline stops again.
 
-This is where I evaluate the agent findings. Are they right? Agents are useful but not infallible. They can produce false positives ("this introduces a vulnerability" when it doesn't) and false negatives (missing something obvious). On the Inspector PR, the supply chain agent said the fix version for a CVE was 8.3.1 — I sent 4 independent agents to verify and the actual minimum fix was 8.2.2. The agent was close but wrong on the specific version.
+This is where I evaluate the agent findings. Are they right? Agents are useful but not infallible, and even when they're right, the quality varies a lot between them. Reviving Inspector PR #1134, all six verify agents passed the fix — but reading through the findings, it was clear the integration reviewer had done the real work. It traced `callTool`'s return value two hops out and caught a genuine regression the other five missed: an app-resource tool run as a task opened its embedded view against a placeholder instead of the final result. I confirmed the trace against the actual code, wrote a regression test that failed on the pre-fix version to prove it, and only then trusted the PASS.
 
-I also resolve disagreements here. On that same PR, the supply chain specialist said "bump the versions to fix CVEs" and the devil's advocate said "don't touch files you weren't asked to change." Both had valid points. I decided: keep the scope tight, note the CVEs in the PR description, submit a separate version bump later. Two contributions instead of one messy one.
+I also make the scope calls here. Inspector #1144 is the clean example: by the time I'd finished rebasing onto v1.0.0, the CVE note I'd drafted for the PR description didn't apply anymore — the vulnerabilities were already fixed upstream. Nobody was arguing to keep a stale claim in there, but it's still my call whether to describe a problem that doesn't exist. I cut it.
 
 ### Stop 3: Before Anything Gets Pushed
 
@@ -38,7 +38,7 @@ This exists because I don't trust the process to be perfect. I trust it to catch
 
 **How to fix them.** I consider multiple approaches, document the alternatives, and choose one. Sometimes the agents suggest a different approach during verification — I evaluate that and decide.
 
-**Scope.** This is the hardest one. The supply chain agent on Inspector #873 found real CVEs. Should I fix them in the same PR? Expand the scope? The devil's advocate argued no. I agreed — but it was my call, informed by the agents' analysis.
+**Scope.** This is the hardest one. On Inspector #873 (submitted as PR #1144), the first supply-chain pass flagged CVEs against the dependency versions I'd originally declared. Once I rebased onto v1.0.0 and corrected those versions, a fresh pass came back with nothing — the CVEs were already resolved upstream. The devil's advocate's take was blunt: don't describe a vulnerability that isn't there. I agreed, dropped the note, and kept the PR to exactly what #873 asked for.
 
 **Whether agent findings are correct.** I override when I have domain knowledge they lack. I investigate when I'm not sure. I don't blindly trust PASS or blindly act on FAIL.
 
@@ -54,9 +54,9 @@ The system does the work I'd skip if I were in a hurry:
 
 **Tracing imports.** On the phantom dependencies PR, the system traced every `import` in every bundled file to verify exactly which packages were missing. I could have done that manually — it would have taken 20 minutes and I might have missed one.
 
-**Verifying CVEs are real.** AI agents sometimes hallucinate vulnerability IDs. The system cross-references against GitHub Advisory Database, npm audit, NVD, and Snyk. On the Inspector PR, it confirmed 5 CVEs across 5 independent sources. That's not something I'd do manually for every PR.
+**Verifying CVEs are real — or aren't.** AI agents sometimes hallucinate vulnerability IDs, and just as often miss that one's already been patched upstream. The system cross-references against GitHub Advisory Database, npm audit, NVD, and Snyk. On Inspector #1144, that's exactly what told me the CVE note I'd drafted was already stale, so it never shipped. That's not something I'd catch reliably by hand for every PR.
 
-**Adversarial review.** I don't naturally think "why would a maintainer reject this?" The devil's advocate agent does, every time. It caught the prettier version bump I didn't notice. It flagged scope creep risk on the CVE fix. It's the most valuable agent in the formation.
+**Adversarial review.** I don't naturally think "why would a maintainer reject this?" The devil's advocate agent does, every time. On Inspector #1134 it predicted the exact question a maintainer would ask — does running two tasks overwrite each other's result pane? — and pre-wrote the answer, so I had it ready instead of scrambling after the fact. It's the most valuable agent in the formation.
 
 ## What This Is Not
 

@@ -1,6 +1,6 @@
-# Herakles Gitbub Issues - Agentic Architecture
+# Herakles GitHub Issues - Agentic Architecture
 
-**A human-supervised contribution framework.** Every PR goes through 10 phases, 28+ automated gates, and 5-7 independent code review agents before I approve it from my inbox.
+**A human-supervised contribution framework.** Every PR goes through 10 phases, 28+ automated gates, and 6-8 independent code review agents before I approve it from my inbox.
 
 This is not a bot. I pick the issues, write the code, review every diff, and approve every submission. The system handles the parts most contributors skip: checking for competing PRs, detecting project conventions, scanning for secrets, tracing imports, verifying CVEs, and arguing against its own work.
 
@@ -12,7 +12,7 @@ This is not a bot. I pick the issues, write the code, review every diff, and app
 
 ```
 validate (8 gates) -> comprehend -> comply (8 detections) -> scaffold
--> [I write the code] -> pre-submit (12 checks) -> verify (5-7 agents)
+-> [I write the code] -> pre-submit (12 checks) -> verify (6-8 agents)
 -> approve (I read the full diff in my email) -> submit -> monitor
 ```
 
@@ -20,7 +20,7 @@ validate (8 gates) -> comprehend -> comply (8 detections) -> scaffold
 
 **Before anything touched GitHub:** 12 static checks scanned for secrets, verified commit trailers, enforced DCO sign-off, checked AI disclosure compliance, and validated the methodology documentation.
 
-**Before I approved:** 5-7 specialist agents independently reviewed the code:
+**Before I approved:** 6-8 specialist agents independently reviewed the code:
 
 | Agent | What It Does |
 |-------|-------------|
@@ -30,6 +30,7 @@ validate (8 gates) -> comprehend -> comply (8 detections) -> scaffold
 | Conventions | 30-second maintainer scan — would you reject this on style? |
 | Devil's advocate | Argues against merging. Finds the reasons to say no. |
 | Integration | Traces second-order effects on the broader ecosystem |
+| Voice | Does the PR description read like a human wrote it, or like AI slop? |
 
 Every agent must PASS. One FAIL blocks the pipeline.
 
@@ -43,9 +44,9 @@ Every agent must PASS. One FAIL blocks the pipeline.
 
 I traced every `import` in every bundled file. The **conventions reviewer** caught a prettier version bump that slipped in through a lint-staged hook — I wouldn't have noticed. The **supply chain specialist** found two real CVEs in the dependencies I was adding. The **devil's advocate** said: don't fix the CVEs in this PR, it's scope creep.
 
-I wasn't sure about the CVE call. So I spawned 4 more agents to cross-verify against GitHub Advisory DB, npm audit, NVD, Snyk, and GitLab Advisory. Real CVEs — but pre-existing in the workspace packages, not introduced by my change.
+I wasn't sure about the CVE call. So I spawned 4 more agents to cross-verify against GitHub Advisory DB, npm audit, NVD, Snyk, and GitLab Advisory. Real at the time — but pre-existing in the workspace packages, not introduced by my change. So I shipped the scoped fix and left the CVEs for a separate bump.
 
-Decision: ship the scoped fix, note the CVEs for the maintainers, submit a separate version bump later.
+The honest epilogue: this PR then sat for four months. When the Inspector shipped v1.0.0, I rebased and re-ran the whole pipeline against the new release — and a fresh audit showed those CVEs had been resolved upstream. The final version dropped the note entirely. The pipeline re-verifies; it doesn't ship a claim that's gone stale.
 
 That's the kind of decision this framework is designed to support. Not replace — support.
 
@@ -57,7 +58,7 @@ Open source has a spam problem. AI tools made it easy to generate a fix and fire
 
 I think the answer isn't banning AI — it's using it to be **more rigorous, not less**. Make it impossible to skip the hard parts. Every contribution through this pipeline goes through more checks than any purely manual workflow would include.
 
-**Honest status:** 5 PRs submitted, 0 merged yet, 0 rejected. The framework is a week old. [Live tracker →](CONTRIBUTIONS.md)
+**Honest status:** one merge into a 230k-star project, four MCP-ecosystem and infrastructure PRs in review, the pipeline skill sitting in two more community collections, and a few that didn't land — kept in the tracker on purpose. Started March 2026. [Live tracker →](CONTRIBUTIONS.md)
 
 ---
 
