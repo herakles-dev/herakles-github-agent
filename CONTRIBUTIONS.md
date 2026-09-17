@@ -1,60 +1,46 @@
 # Contributions
 
-Everything I've submitted, where it stands, and what I learned.
+Everything I've submitted, where it stands, and what I learned. The ledger below is generated straight from live GitHub state, so it never drifts out of sync with what's actually open, closed, or merged — the story around it is the part I write by hand.
 
-## The Numbers
+## The Story So Far
 
-**First external merge landed.** The `opensource-pipeline` (3 agents + skill) was merged into [affaan-m/ECC](https://github.com/affaan-m/ECC) — a 230k-star agent-harness project — by the repo owner on March 31, 2026. Months later the files are still in `main`, and the distinctively-named agents now show up across ~50 downstream repos in the ecosystem's fork network.
+The `opensource-pipeline` skill — three agents: forker, sanitizer, packager — was merged into [affaan-m/ECC](https://github.com/affaan-m/ECC), a 230k-star agent-harness project, by the repo owner on March 31, 2026. Months later the files are still in `main`, maintainer-edited, and the distinctively-named agents now show up across roughly 50 downstream repos in the ecosystem's fork network. That's the strongest signal so far that this actually works: not a PR getting merged, but a stranger's codebase quietly absorbing it.
 
-That same skill went out to four community collections. ECC merged it; two are still open; one maintainer asked me to come back once the project matures. Separately, four MCP-ecosystem and infrastructure PRs are in review. The full ledger is below — closed ones included, because the ones that didn't land say as much as the ones that did.
+The same pipeline went out to a few other places too, and a couple of other lines of work have opened up since — some landed, some didn't, some are still waiting on review. Rather than restate a snapshot here that goes stale the next time something moves, the ledger below reflects live state every time it's regenerated.
 
 ## Merged
 
-### ECC (agent harness optimization system) — 230k+ stars
+| Repo | PR | Title | Date | Note |
+|---|---|---|---|---|
+| affaan-m/ECC | [#1036](https://github.com/affaan-m/ECC/pull/1036) | feat(agents,skills): add opensource-pipeline — 3-agent workflow for safe public releases | 2026-03-31 | Merged by the repo owner after 8 reviews. Months later the files are still in main and actively maintained; the agents now show up in roughly 50 downstream repos. |
 
-**[#1036 — add opensource-pipeline: 3-agent workflow for safe public releases](https://github.com/affaan-m/ECC/pull/1036)** (merged Mar 31, 2026)
-Added the `opensource-pipeline` skill and its three agents (`opensource-forker`, `opensource-sanitizer`, `opensource-packager`) — the workflow that strips secrets, sanitizes internal references, and packages a repo for safe public release. Merged by the repo owner after 8 comments and 8 reviews. Months later the files are still in `main` and actively maintained by the team (last touched July 9). The agents now appear across ~50 downstream repositories in the ecosystem's fork/adapt network.
+## Open
 
-## Open PRs
+| Repo | PR | Title | Date | Note |
+|---|---|---|---|---|
+| affaan-m/ECC | [#2966](https://github.com/affaan-m/ECC/pull/2966) | fix(agents): list files the sanitizer cannot read | 2026-09-05 | Binary-blindspot fix for the sanitizer's UNSCANNED gate, about ten rounds of review-bot back-and-forth. Latest revision closes the hole with an additive allowlist rather than a broader rewrite; awaiting CI and a maintainer re-review. |
+| anthropics/skills | [#817](https://github.com/anthropics/skills/pull/817) | Add opensource-pipeline skill | 2026-03-31 | The same opensource-pipeline skill that merged into ECC, submitted to Anthropic's own skills collection. |
+| google-deepmind/formal-conjectures | [#5425](https://github.com/google-deepmind/formal-conjectures/pull/5425) | feat(ErdosProblems/399): prove erdos_399.variants.cambie | 2026-09-10 | Filled a sorry with an elementary mod-8 Lean proof of the Erdos #399 Cambie variant, machine-verified with no sorryAx. |
+| google-deepmind/formal-conjectures | [#5481](https://github.com/google-deepmind/formal-conjectures/pull/5481) | feat(ErdosProblems/672): link an external Lean proof of erdos_672.variants.euler | 2026-09-10 | A one-line formal_proof linking a public Lean repo that proves the Erdos #672 Euler four-squares variant. |
 
-### MCP Inspector
+## Closed (unmerged)
 
-**[#1132 — Handle list_changed notifications](https://github.com/modelcontextprotocol/inspector/pull/1132)** (Mar 7)
-The inspector wasn't handling `tools/list_changed`, `resources/list_changed`, or `prompts/list_changed` MCP notifications. Added the handlers. Pipeline v1.
+| Repo | PR | Title | Date | Note |
+|---|---|---|---|---|
+| ComposioHQ/awesome-claude-skills | [#546](https://github.com/ComposioHQ/awesome-claude-skills/pull/546) | Add Open-Source Pipeline skill | 2026-07-26 | The same opensource-pipeline skill, submitted to another community collection. |
+| VoltAgent/awesome-claude-code-subagents | [#157](https://github.com/VoltAgent/awesome-claude-code-subagents/pull/157) | Add opensource pipeline agents (forker, sanitizer, packager) | 2026-04-01 | The same opensource-pipeline agents. Maintainer asked me to resubmit once the source project has more of a track record. |
+| kubeflow/docs-agent | [#118](https://github.com/kubeflow/docs-agent/pull/118) | security(server): replace CORS wildcard with env-var allowlist | 2026-09-17 | Replaced a wildcard CORS config with an env-var-driven allowlist. Superseded upstream by #218. |
+| modelcontextprotocol/inspector | [#1132](https://github.com/modelcontextprotocol/inspector/pull/1132) | feat: handle tools/resources/prompts list_changed notifications | 2026-07-31 | tools/resources/prompts list_changed notification handling. Closed unmerged when Inspector v2 deprecated the entire v1 PR queue. |
+| modelcontextprotocol/inspector | [#1134](https://github.com/modelcontextprotocol/inspector/pull/1134) | fix: task polling blocking the Run button | 2026-07-31 | Made task polling non-blocking so the Run button stays live during a call. Closed unmerged when Inspector v2 deprecated the entire v1 PR queue. |
+| modelcontextprotocol/inspector | [#1144](https://github.com/modelcontextprotocol/inspector/pull/1144) | fix: declare bundled runtime dependencies for strict package managers | 2026-07-31 | Declared five phantom bundled runtime dependencies missing from the root package.json. Closed unmerged when Inspector v2 deprecated the entire v1 PR queue. |
+| modelcontextprotocol/python-sdk | [#2241](https://github.com/modelcontextprotocol/python-sdk/pull/2241) | fix: make pywin32 imports soft to support server-only Windows installs | 2026-03-24 | pywin32 soft imports so server-only Windows installs don't hard-fail. Closed for landing before the issue had been triaged. |
+| modelcontextprotocol/python-sdk | [#2242](https://github.com/modelcontextprotocol/python-sdk/pull/2242) | fix: catch ClosedResourceError in _handle_message error recovery path | 2026-03-10 | A ClosedResourceError fix in the message-handler recovery path. Closed as a duplicate of #2072. |
 
-**[#1134 — Fix task polling blocking Run button](https://github.com/modelcontextprotocol/inspector/pull/1134)** (Mar 9, revived Jul 18)
-The task polling loop ran synchronously and disabled the Run button until the task finished. Extracted it into a non-blocking `pollTaskInBackground` so the button stays live for concurrent calls. The PR sat unreviewed for four months and rotted into a merge conflict, so I rebased it onto v1.0.0 — where the conflict was a trap: v1.0.0 had added `input_required` elicitation handling *inside* the exact loop I was deleting. A blind resolution would have silently dropped that feature; I ported it into the background poller instead. A 6-agent QC swarm then caught a real second-order regression (running an app-resource tool as a task showed the embedded app a placeholder instead of the final result). Fixed it, added a regression test that provably fails on the pre-fix code, and shipped with 541 tests green. Pipeline v2.1.
+## In progress
 
-**[#1144 — fix: declare bundled runtime dependencies for strict package managers](https://github.com/modelcontextprotocol/inspector/pull/1144)** (Mar 14, revived Jul 18)
-Five phantom dependencies missing from root `package.json` that break pnpm and yarn PnP installs. Traced every import in every bundled file. When the inspector shipped v1.0.0 (July 18) without fixing it, I re-verified everything against the new release: corrected `express` (now 5.x, not 4.x), confirmed the dependency set is exactly five (the browser-bundled `ajv`/`ajv-formats` are *not* phantom deps — a trap the first pass could have fallen into), and dropped the old CVE note because a fresh audit showed zero vulnerabilities. Regenerated the lockfile in a Node 22 container to match CI, then rebased and re-ran a 6-agent verify swarm — which caught an uncommitted lockfile before it could red-X CI. Pipeline v2.1.
-
-### Kubeflow
-
-**[docs-agent #118 — CORS wildcard to env-var allowlist](https://github.com/kubeflow/docs-agent/pull/118)** (Mar 7)
-Fixed a wildcard CORS configuration (`*`) that allowed any origin. Replaced with an environment-variable-driven allowlist. This was the PR that taught me static checks aren't enough — three agents found the missing `ALLOWED_ORIGINS` env var in deployment.yaml and a wildcard bypass vulnerability that 12 bash checks missed. Led to building the V2 agent verification phase. Pipeline v2.
-
-### Skill collections
-
-The `opensource-pipeline` skill that merged into ECC also went out to the community skill collections, so people can find it where they already look.
-
-**[anthropics/skills #817 — Add opensource-pipeline skill](https://github.com/anthropics/skills/pull/817)** (Mar 31)
-Submitted the same three-agent workflow to Anthropic's official skills collection.
-
-**[ComposioHQ/awesome-claude-skills #546 — Add Open-Source Pipeline skill](https://github.com/ComposioHQ/awesome-claude-skills/pull/546)** (Mar 31)
-Added it to the community-curated awesome-claude-skills list.
-
-## Closed / Didn't Land
-
-The ones that didn't make it — kept here on purpose. What you do with a rejection is part of the record.
-
-**[VoltAgent/awesome-claude-code-subagents #157 — Add opensource pipeline agents](https://github.com/VoltAgent/awesome-claude-code-subagents/pull/157)** (Mar 31)
-Same agents, submitted to another collection. The maintainer's call: *"the project looks quite new at the moment — please feel free to open a new PR once it has matured."* Fair. Noted, and I'll come back when there's a track record to point to.
-
-**[modelcontextprotocol/python-sdk #2241 — pywin32 soft imports](https://github.com/modelcontextprotocol/python-sdk/pull/2241)** (Mar 7)
-A five-line fix for a real cross-platform bug — the SDK hard-imported `pywin32`, which isn't installable everywhere. Closed by a maintainer because the underlying issue hadn't been triaged yet: per their CONTRIBUTING.md, wait for maintainer feedback before opening a PR. A process lesson, not a code one — respect the triage gate.
-
-**[modelcontextprotocol/python-sdk #2242 — ClosedResourceError in _handle_message](https://github.com/modelcontextprotocol/python-sdk/pull/2242)** (Mar 7)
-A race where the message handler could touch a closed resource. A contributor pointed out an existing PR (#2072) already covered it; I closed mine gracefully. The right call is not to compete on ground that's already taken.
+| Repo | Slug | Date | Note |
+|---|---|---|---|
+| leanprover-community/mathlib4 | `mathlib4-fermat-family` | 2026-09-17 | Two Lean theorems for the Fermat right-triangle family, kernel-clean against Mathlib. Paused on a Zulip sounding of #mathlib4 before a PR goes up. |
 
 ## What I've Learned So Far
 
@@ -86,4 +72,4 @@ A race where the message handler could touch a closed resource. A contributor po
 
 ---
 
-*Updated: 2026-07-29*
+_Generated 2026-09-17 by scripts/export-contributions.sh_

@@ -1,6 +1,6 @@
 # Herakles GitHub Issues - Agentic Architecture
 
-**A human-supervised contribution framework.** Every PR goes through 10 phases, 28+ automated gates, and 6-8 independent code review agents before I approve it from my inbox.
+**A human-supervised contribution framework.** Every PR goes through 10 phases, 23 automated gates (8 pre-flight + 15 pre-submission), and 6-8 independent code review agents before I approve it from my inbox.
 
 This is not a bot. I pick the issues, write the code, review every diff, and approve every submission. The system handles the parts most contributors skip: checking for competing PRs, detecting project conventions, scanning for secrets, tracing imports, verifying CVEs, and arguing against its own work.
 
@@ -48,6 +48,8 @@ I wasn't sure about the CVE call. So I spawned 4 more agents to cross-verify aga
 
 The honest epilogue: this PR then sat for four months. When the Inspector shipped v1.0.0, I rebased and re-ran the whole pipeline against the new release — and a fresh audit showed those CVEs had been resolved upstream. The final version dropped the note entirely. The pipeline re-verifies; it doesn't ship a claim that's gone stale.
 
+The final outcome, for the record: the Inspector then shipped v2 and deprecated the entire v1 PR queue, so #1144 closed unmerged along with everything else that was in flight, mine included. Not wasted work — v2 takes issues, not PRs, so the next contribution there starts clean instead of off a rebase.
+
 That's the kind of decision this framework is designed to support. Not replace — support.
 
 ---
@@ -58,7 +60,7 @@ Open source has a spam problem. AI tools made it easy to generate a fix and fire
 
 I think the answer isn't banning AI — it's using it to be **more rigorous, not less**. Make it impossible to skip the hard parts. Every contribution through this pipeline goes through more checks than any purely manual workflow would include.
 
-**Honest status:** one merge into a 230k-star project, four MCP-ecosystem and infrastructure PRs in review, the pipeline skill sitting in two more community collections, and a few that didn't land — kept in the tracker on purpose. Started March 2026. [Live tracker →](CONTRIBUTIONS.md)
+**Honest status:** one merge into a 230k-star project, four open PRs — a sanitizer security fix, two formal-proof contributions, and a skills-collection submission — and eight that didn't land, kept in the tracker on purpose. Started March 2026. [Live tracker →](CONTRIBUTIONS.md)
 
 ---
 
