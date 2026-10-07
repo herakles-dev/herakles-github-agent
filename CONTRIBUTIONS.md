@@ -4,7 +4,7 @@ Everything I've submitted, where it stands, and what I learned. The ledger below
 
 ## The Story So Far
 
-The `opensource-pipeline` skill — three agents: forker, sanitizer, packager — was merged into [affaan-m/ECC](https://github.com/affaan-m/ECC), a 230k-star agent-harness project, by the repo owner on March 31, 2026. Months later the files are still in `main`, maintainer-edited, and the distinctively-named agents now show up across roughly 50 downstream repos in the ecosystem's fork network. That's the strongest signal so far that this actually works: not a PR getting merged, but a stranger's codebase quietly absorbing it.
+The `opensource-pipeline` skill — three agents: forker, sanitizer, packager — was merged into [affaan-m/ECC](https://github.com/affaan-m/ECC), an agent-harness project that has since passed a quarter-million stars, by the repo owner on March 31, 2026. Months later the files are still in `main`, maintainer-edited, and the distinctively-named agents now show up across roughly 50 downstream repos in the ecosystem's fork network. That's the strongest signal so far that this actually works: not a PR getting merged, but a stranger's codebase quietly absorbing it.
 
 The same pipeline went out to a few other places too, and a couple of other lines of work have opened up since — some landed, some didn't, some are still waiting on review. Rather than restate a snapshot here that goes stale the next time something moves, the ledger below reflects live state every time it's regenerated.
 
@@ -13,6 +13,8 @@ The same pipeline went out to a few other places too, and a couple of other line
 | Repo | PR | Title | Date | Note |
 |---|---|---|---|---|
 | affaan-m/ECC | [#1036](https://github.com/affaan-m/ECC/pull/1036) | feat(agents,skills): add opensource-pipeline — 3-agent workflow for safe public releases | 2026-03-31 | Merged by the repo owner after 8 reviews. Months later the files are still in main and actively maintained; the agents now show up in roughly 50 downstream repos. |
+| google-deepmind/formal-conjectures | [#5425](https://github.com/google-deepmind/formal-conjectures/pull/5425) | feat(ErdosProblems/399): prove erdos_399.variants.cambie | 2026-09-18 | Filled a sorry with an elementary mod-8 Lean proof of the Erdos #399 Cambie variant, machine-verified with no sorryAx. |
+| google-deepmind/formal-conjectures | [#5481](https://github.com/google-deepmind/formal-conjectures/pull/5481) | feat(ErdosProblems/672): link an external Lean proof of erdos_672.variants.euler | 2026-09-18 | A one-line formal_proof linking a public Lean repo that proves the Erdos #672 Euler four-squares variant. |
 
 ## Open
 
@@ -20,8 +22,7 @@ The same pipeline went out to a few other places too, and a couple of other line
 |---|---|---|---|---|
 | affaan-m/ECC | [#2966](https://github.com/affaan-m/ECC/pull/2966) | fix(agents): list files the sanitizer cannot read | 2026-09-05 | Binary-blindspot fix for the sanitizer's UNSCANNED gate, about ten rounds of review-bot back-and-forth. Latest revision closes the hole with an additive allowlist rather than a broader rewrite; awaiting CI and a maintainer re-review. |
 | anthropics/skills | [#817](https://github.com/anthropics/skills/pull/817) | Add opensource-pipeline skill | 2026-03-31 | The same opensource-pipeline skill that merged into ECC, submitted to Anthropic's own skills collection. |
-| google-deepmind/formal-conjectures | [#5425](https://github.com/google-deepmind/formal-conjectures/pull/5425) | feat(ErdosProblems/399): prove erdos_399.variants.cambie | 2026-09-10 | Filled a sorry with an elementary mod-8 Lean proof of the Erdos #399 Cambie variant, machine-verified with no sorryAx. |
-| google-deepmind/formal-conjectures | [#5481](https://github.com/google-deepmind/formal-conjectures/pull/5481) | feat(ErdosProblems/672): link an external Lean proof of erdos_672.variants.euler | 2026-09-10 | A one-line formal_proof linking a public Lean repo that proves the Erdos #672 Euler four-squares variant. |
+| punkpeye/awesome-mcp-servers | [#15786](https://github.com/punkpeye/awesome-mcp-servers/pull/15786) | Add herakles-dev/safexl 🤖🤖🤖 | 2026-10-05 | Directory listing for SafeXL, my Excel-editing MCP server. Waiting on a Glama listing the directory now requires. |
 
 ## Closed (unmerged)
 
@@ -72,4 +73,4 @@ The same pipeline went out to a few other places too, and a couple of other line
 
 ---
 
-_Generated 2026-09-17 by scripts/export-contributions.sh_
+_Generated 2026-10-07 by scripts/export-contributions.sh_

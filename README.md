@@ -60,7 +60,7 @@ Open source has a spam problem. AI tools made it easy to generate a fix and fire
 
 I think the answer isn't banning AI — it's using it to be **more rigorous, not less**. Make it impossible to skip the hard parts. Every contribution through this pipeline goes through more checks than any purely manual workflow would include.
 
-**Honest status:** one merge into a 230k-star project, four open PRs — a sanitizer security fix, two formal-proof contributions, and a skills-collection submission — and eight that didn't land, kept in the tracker on purpose. Started March 2026. [Live tracker →](CONTRIBUTIONS.md)
+**Honest status:** three merges — one into a project with more than a quarter-million stars, two Lean proofs into Google DeepMind's `formal-conjectures` — three open PRs (a sanitizer security fix, a skills-collection submission, and a directory listing for one of my own tools), and eight that didn't land, kept in the tracker on purpose. Started March 2026. [Live tracker →](CONTRIBUTIONS.md)
 
 ---
 
